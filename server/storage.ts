@@ -1,9 +1,9 @@
 
-import { db } from "./config";
-import { topics, questions, teams } from "../shared/schema";
+import { db } from "./config.js";
+import { topics, questions, teams } from "../shared/schema.js";
 import { eq } from "drizzle-orm";
 
-// Topics
+// المواضيع
 export async function getTopics() {
   return await db.select().from(topics);
 }
@@ -13,7 +13,7 @@ export async function createTopic(data: { name: string; icon: string }) {
   return result[0];
 }
 
-// Questions
+// الأسئلة
 export async function getQuestions(topicId: number | null) {
   if (topicId === null) {
     return await db.select().from(questions);
@@ -26,7 +26,7 @@ export async function createQuestion(data: { topicId: number; points: number; qu
   return result[0];
 }
 
-// Teams
+// الفرق
 export async function getTeams() {
   return await db.select().from(teams);
 }

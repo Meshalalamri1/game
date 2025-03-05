@@ -1,3 +1,4 @@
+
 import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -40,10 +41,3 @@ export const insertQuestionSchema = createInsertSchema(questions).pick({
 export const insertTeamSchema = createInsertSchema(teams).pick({
   name: true,
 });
-
-export type Topic = typeof topics.$inferSelect;
-export type InsertTopic = z.infer<typeof insertTopicSchema>;
-export type Question = typeof questions.$inferSelect;
-export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
-export type Team = typeof teams.$inferSelect;
-export type InsertTeam = z.infer<typeof insertTeamSchema>;
