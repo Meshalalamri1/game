@@ -15,6 +15,12 @@ import { z } from "zod";
 import { insertQuestionSchema, insertTeamSchema, insertTopicSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
+interface Topic {
+  id: number;
+  name: string;
+  icon: string;
+}
+
 export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -48,7 +54,7 @@ export default function Admin() {
   });
 
   // Fetch data
-  const { data: topics = [] } = useQuery({
+  const { data: topics = [] } = useQuery<Topic[]>({
     queryKey: ["/api/topics"]
   });
 
@@ -92,8 +98,12 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/topics"] });
       toast({ title: "تم حذف الموضوع بنجاح" });
     },
-    onError: (error) => {
-      toast({ title: "حدث خطأ أثناء حذف الموضوع", description: error.message, status: "error" });
+    onError: (error: Error) => {
+      toast({ 
+        title: "حدث خطأ أثناء حذف الموضوع", 
+        description: error.message,
+        variant: "destructive" 
+      });
     }
   });
 
@@ -148,7 +158,7 @@ export default function Admin() {
                       )}
                     />
                   </div>
-                  <Button type="submit" loading={addTopic.isPending}>
+                  <Button type="submit" disabled={addTopic.isPending}>
                     إضافة موضوع
                   </Button>
                 </form>
@@ -167,7 +177,7 @@ export default function Admin() {
                   <div className="border rounded-md p-4">
                     <h3 className="font-bold mb-4">قائمة المواضيع</h3>
                     <div className="space-y-2">
-                      {topics.map(topic => (
+                      {topics.map((topic: Topic) => (
                         <div key={topic.id} className="flex justify-between items-center border-b pb-2">
                           <div className="flex items-center gap-2">
                             <span className="text-2xl">{topic.icon}</span>
@@ -177,7 +187,7 @@ export default function Admin() {
                             variant="destructive"
                             size="sm"
                             onClick={() => deleteTopic.mutate(topic.id)}
-                            loading={deleteTopic.isPending}
+                            disabled={deleteTopic.isPending}
                           >
                             حذف
                           </Button>
@@ -210,7 +220,7 @@ export default function Admin() {
                             <SelectValue placeholder="اختر موضوعاً" />
                           </SelectTrigger>
                           <SelectContent>
-                            {topics.map((topic) => (
+                            {topics.map((topic: Topic) => (
                               <SelectItem key={topic.id} value={String(topic.id)}>
                                 {topic.icon} {topic.name}
                               </SelectItem>
