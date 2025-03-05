@@ -116,6 +116,7 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
         question={selectedQuestion}
         team={selectedTeam}
         onAnswer={handleQuestionAnswer}
+        teams={teams}
       />
     </>
   );
