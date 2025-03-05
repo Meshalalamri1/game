@@ -170,26 +170,6 @@ export default function Admin() {
     }
   });
 
-  const deleteQuestion = useMutation({
-    mutationFn: (questionId: number) => 
-      apiRequest("DELETE", `/api/questions/${questionId}`),
-    onSuccess: () => {
-      if (selectedTopicId) {
-        queryClient.invalidateQueries({ 
-          queryKey: [`/api/topics/${selectedTopicId}/questions`] 
-        });
-      }
-      toast({ title: "تم حذف السؤال بنجاح" });
-    },
-    onError: (error: Error) => {
-      toast({ 
-        title: "حدث خطأ أثناء حذف السؤال",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
   const clearAllQuestions = useMutation({
     mutationFn: () => apiRequest("POST", "/api/questions/clear"),
     onSuccess: () => {
@@ -209,6 +189,26 @@ export default function Admin() {
       });
     }
   });
+
+  // تقديم النموذج لإضافة سؤال جديد
+  const onSubmitQuestion = (data) => {
+    // التحقق من عدد الأسئلة لنفس الموضوع ونفس فئة النقاط
+    const questionsInSamePointCategory = questions.filter(
+      q => q.topicId === data.topicId && q.points === data.points
+    );
+
+    if (questionsInSamePointCategory.length >= 2) {
+      toast({
+        title: "خطأ",
+        description: `يوجد بالفعل سؤالين لفئة ${data.points} نقطة لهذا الموضوع`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    addQuestion.mutate(data);
+    addQuestionForm.reset();
+  };
 
   return (
     <div className="container mx-auto p-4 rtl">
@@ -321,23 +321,7 @@ export default function Admin() {
             </CardHeader>
             <CardContent>
               <Form {...addQuestionForm}>
-                <form onSubmit={addQuestionForm.handleSubmit((data) => {
-                  // التحقق مما إذا كان هناك بالفعل سؤالين بنفس النقاط
-                  const pointsValue = data.points;
-                  const questionsWithSamePoints = questions.filter(q => 
-                    q.topicId === data.topicId && q.points === pointsValue
-                  );
-                  
-                  if (questionsWithSamePoints.length >= 2) {
-                    toast({ 
-                      title: "لا يمكن إضافة أكثر من سؤالين لنفس فئة النقاط", 
-                      variant: "destructive" 
-                    });
-                    return;
-                  }
-                  
-                  addQuestion.mutate(data);
-                })} className="space-y-4">
+                <form onSubmit={addQuestionForm.handleSubmit(onSubmitQuestion)} className="space-y-4">
                   <FormField
                     control={addQuestionForm.control}
                     name="topicId"
@@ -426,8 +410,6 @@ export default function Admin() {
                           onClick={() => deleteQuestion.mutate(question.id)}
                           disabled={deleteQuestion.isPending}
                           size="sm"
-                          onClick={() => deleteQuestion.mutate(question.id)}
-                          disabled={deleteQuestion.isPending}
                         >
                           حذف
                         </Button>
