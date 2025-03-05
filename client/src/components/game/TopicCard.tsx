@@ -1,7 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Link } from "react-router-dom";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Topic } from "@/types";
+import { useState } from "react";
+import QuestionDialog from "./QuestionDialog";
 
-export function TopicCard({ topic, questions }) {
+export default function TopicCard({
+  topic,
+  questions,
+}) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
