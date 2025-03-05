@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +7,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import type { Question, Team } from "@shared/schema";
 
 interface QuestionDialogProps {
@@ -29,6 +32,44 @@ export default function QuestionDialog({
   const [timeLeft, setTimeLeft] = useState(15);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const markUsed = useMutation({
+    mutationFn: (questionId: number) =>
+      apiRequest("POST", `/api/questions/${questionId}/used`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/topics/${question?.topicId}/questions`],
+      });
+    },
+  });
+
+  const updateScore = useMutation({
+    mutationFn: ({ teamId, score }: { teamId: number; score: number }) =>
+      apiRequest("PATCH", `/api/teams/${teamId}/score`, { score }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+    },
+  });
+
+  const handleCorrect = () => {
+    if (question && team) {
+      updateScore.mutate({
+        teamId: team.id,
+        score: team.score + question.points,
+      });
+      markUsed.mutate(question.id);
+      onAnswer(true);
+      onOpenChange(false);
+    }
+  };
+
+  const handleIncorrect = () => {
+    if (question && team) {
+      markUsed.mutate(question.id);
+      onAnswer(false);
+      onOpenChange(false);
+    }
+  };
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -85,33 +126,6 @@ export default function QuestionDialog({
           )}
         </div>
 
-        {/* Teams */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          {teams.map((t) => (
-            <div
-              key={t.id}
-              className="flex justify-between items-center p-4 border rounded-lg"
-            >
-              <span className="font-bold">{t.name}</span>
-              <div className="flex gap-2 items-center">
-                <span>{t.score}</span>
-                {!showAnswer && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      onAnswer(true);
-                      setShowAnswer(true);
-                    }}
-                  >
-                    +{question.points}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Actions */}
         <div className="flex justify-center gap-4">
           <Button
@@ -121,136 +135,25 @@ export default function QuestionDialog({
           >
             إظهار الإجابة
           </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              onAnswer(false);
-              onOpenChange(false);
-            }}
-          >
-            إغلاق
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Button } from "../ui/button";
-import { apiRequest } from "@/lib/queryClient";
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import type { Question, Team } from "@shared/schema";
-
-interface QuestionDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  question: Question | null;
-  team: Team | null;
-  onAnswer: (correct: boolean) => void;
-  teams: Team[];
-}
-
-export default function QuestionDialog({
-  open,
-  onOpenChange,
-  question,
-  team,
-  onAnswer,
-  teams,
-}: QuestionDialogProps) {
-  const [showAnswer, setShowAnswer] = React.useState(false);
-  
-  const markUsed = useMutation({
-    mutationFn: (questionId: number) =>
-      apiRequest("POST", `/api/questions/${questionId}/used`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [`/api/topics/${question?.topicId}/questions`],
-      });
-    },
-  });
-
-  const updateScore = useMutation({
-    mutationFn: ({ teamId, score }: { teamId: number; score: number }) =>
-      apiRequest("PATCH", `/api/teams/${teamId}/score`, { score }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-    },
-  });
-
-  const handleCorrect = () => {
-    if (question && team) {
-      updateScore.mutate({
-        teamId: team.id,
-        score: team.score + question.points,
-      });
-      markUsed.mutate(question.id);
-      onAnswer(true);
-      onOpenChange(false);
-    }
-  };
-
-  const handleIncorrect = () => {
-    if (question && team) {
-      markUsed.mutate(question.id);
-      onAnswer(false);
-      onOpenChange(false);
-    }
-  };
-
-  React.useEffect(() => {
-    if (open) {
-      setShowAnswer(false);
-    }
-  }, [open]);
-
-  if (!question) return null;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="rtl">
-          <DialogTitle>سؤال بقيمة {question.points} نقطة</DialogTitle>
-        </DialogHeader>
-        <div className="p-4 rtl">
-          <div className="mb-6">
-            <p className="text-lg font-bold mb-2">السؤال:</p>
-            <p className="text-xl">{question.question}</p>
-          </div>
 
           {showAnswer && (
-            <div className="mb-6 border-t pt-4">
-              <p className="text-lg font-bold mb-2">الإجابة:</p>
-              <p className="text-xl">{question.answer}</p>
+            <div className="flex justify-between w-full mt-4">
+              <Button
+                variant="destructive"
+                onClick={handleIncorrect}
+                disabled={markUsed.isPending}
+              >
+                إجابة خاطئة
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleCorrect}
+                disabled={updateScore.isPending}
+              >
+                إجابة صحيحة
+              </Button>
             </div>
           )}
-
-          <div className="flex flex-col space-y-2">
-            {!showAnswer && (
-              <Button onClick={() => setShowAnswer(true)}>إظهار الإجابة</Button>
-            )}
-
-            {showAnswer && (
-              <div className="flex justify-between mt-4">
-                <Button
-                  variant="destructive"
-                  onClick={handleIncorrect}
-                  disabled={markUsed.isPending}
-                >
-                  إجابة خاطئة
-                </Button>
-                <Button
-                  variant="default"
-                  onClick={handleCorrect}
-                  disabled={updateScore.isPending}
-                >
-                  إجابة صحيحة
-                </Button>
-              </div>
-            )}
-          </div>
         </div>
       </DialogContent>
     </Dialog>
