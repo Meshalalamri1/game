@@ -1,101 +1,110 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { insertQuestionSchema, insertTeamSchema, insertTopicSchema } from "@shared/schema";
 
-import express from "express";
-import { Server } from "http";
-import { getTopics, getQuestions, getQuestionById, getTeams, updateTeamScore, createTopic, createQuestion, createTeam } from "./storage.js";
-
-export async function registerRoutes(app: express.Express): Promise<Server> {
-  const server = new Server(app);
-
-  // مسارات API
-  app.get("/api/topics", async (_req, res) => {
-    try {
-      const topics = await getTopics();
-      res.json(topics);
-    } catch (error) {
-      console.error("خطأ في الحصول على المواضيع:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
-    }
-  });
-
-  app.get("/api/topics/:topicId/questions", async (req, res) => {
-    try {
-      const topicId = req.params.topicId === "null" ? null : parseInt(req.params.topicId);
-      const questions = await getQuestions(topicId);
-      res.json(questions);
-    } catch (error) {
-      console.error("خطأ في الحصول على الأسئلة:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
-    }
-  });
-
-  app.get("/api/questions/:questionId", async (req, res) => {
-    try {
-      const questionId = parseInt(req.params.questionId);
-      const question = await getQuestionById(questionId);
-      if (!question) {
-        return res.status(404).json({ error: "السؤال غير موجود" });
-      }
-      res.json(question);
-    } catch (error) {
-      console.error("خطأ في الحصول على السؤال:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
-    }
-  });
-
-  app.get("/api/teams", async (_req, res) => {
-    try {
-      const teams = await getTeams();
-      res.json(teams);
-    } catch (error) {
-      console.error("خطأ في الحصول على الفرق:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
-    }
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Topics
+  app.get("/api/topics", async (req, res) => {
+    const topics = await storage.getTopics();
+    res.json(topics);
   });
 
   app.post("/api/topics", async (req, res) => {
-    try {
-      const { name, icon } = req.body;
-      const topic = await createTopic({ name, icon });
-      res.json(topic);
-    } catch (error) {
-      console.error("خطأ في إنشاء موضوع:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
+    const parsed = insertTopicSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
     }
+    const topic = await storage.createTopic(parsed.data);
+    res.json(topic);
+  });
+
+  app.delete("/api/topics/:id", async (req, res) => {
+    try {
+      await storage.deleteTopic(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  // Questions
+  app.get("/api/topics/:topicId/questions", async (req, res) => {
+    const questions = await storage.getQuestions(Number(req.params.topicId));
+    res.json(questions);
   });
 
   app.post("/api/questions", async (req, res) => {
-    try {
-      const { topicId, points, question, answer } = req.body;
-      const newQuestion = await createQuestion({ topicId, points, question, answer });
-      res.json(newQuestion);
-    } catch (error) {
-      console.error("خطأ في إنشاء سؤال:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
+    const parsed = insertQuestionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
     }
+    const question = await storage.createQuestion(parsed.data);
+    res.json(question);
+  });
+
+  app.post("/api/questions/:id/used", async (req, res) => {
+    await storage.markQuestionUsed(Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  app.delete("/api/questions/:id", async (req, res) => {
+    try {
+      await storage.deleteQuestion(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  // Clear all questions
+  app.post("/api/questions/clear", async (req, res) => {
+    try {
+      await storage.clearAllQuestions();
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // Teams
+  app.get("/api/teams", async (req, res) => {
+    const teams = await storage.getTeams();
+    res.json(teams);
   });
 
   app.post("/api/teams", async (req, res) => {
+    const parsed = insertTeamSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
+    }
+    const team = await storage.createTeam(parsed.data);
+    res.json(team);
+  });
+
+  app.patch("/api/teams/:id/score", async (req, res) => {
+    const { score } = req.body;
+    if (typeof score !== "number") {
+      return res.status(400).json({ error: "Score must be a number" });
+    }
+    const team = await storage.updateTeamScore(Number(req.params.id), score);
+    res.json(team);
+  });
+
+  app.delete("/api/teams/:id", async (req, res) => {
     try {
-      const { name } = req.body;
-      const team = await createTeam({ name });
-      res.json(team);
+      await storage.deleteTeam(Number(req.params.id));
+      res.json({ success: true });
     } catch (error) {
-      console.error("خطأ في إنشاء فريق:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
+      res.status(404).json({ error: (error as Error).message });
     }
   });
 
-  app.put("/api/teams/:teamId/score", async (req, res) => {
-    try {
-      const teamId = parseInt(req.params.teamId);
-      const { score } = req.body;
-      const team = await updateTeamScore(teamId, score);
-      res.json(team);
-    } catch (error) {
-      console.error("خطأ في تحديث نقاط الفريق:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
-    }
+  app.post("/api/game/reset", async (req, res) => {
+    await storage.resetGame();
+    res.json({ success: true });
   });
 
-  return server;
+  const httpServer = createServer(app);
+  return httpServer;
 }
