@@ -1,126 +1,95 @@
-import React, { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import QuestionDialog from "./QuestionDialog";
-import type { Topic, Team, Question } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/api";
+import { QuestionDialog } from "./QuestionDialog";
 
-interface TopicCardProps {
-  topic: Topic;
-  selectedTeam: Team | null;
-  onTeamSelect: (team: Team | null) => void;
-  teams: Team[];
+interface Question {
+  id: number;
+  topicId: number;
+  points: number;
+  question: string;
+  answer: string;
 }
 
-export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: TopicCardProps) {
+interface TopicCardProps {
+  topic: {
+    id: number;
+    name: string;
+    icon: string;
+  };
+}
+
+export function TopicCard({ topic }: TopicCardProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [answeredQuestions, setAnsweredQuestions] = useState<number[]>([]);
 
-  // Fetch questions for this topic
-  const { data: questions = [], isLoading } = useQuery<Question[]>({
+  const { data: questions = [], refetch } = useQuery<Question[]>({
     queryKey: [`/api/topics/${topic.id}/questions`],
-    enabled: true
+    queryFn: () => apiRequest("GET", `/api/topics/${topic.id}/questions`),
   });
 
-  const updateScoreMutation = useMutation({
-    mutationFn: async ({ teamId, score }: { teamId: number; score: number }) => {
-      await apiRequest("PATCH", `/api/teams/${teamId}/score`, { score });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+  // نقاط متاحة: 200, 400, 600, 800, 1000
+  const pointsOptions = [200, 400, 600, 800, 1000];
+
+  const handleQuestionClick = (points: number) => {
+    const question = questions.find((q) => q.points === points);
+    if (question) {
+      setSelectedQuestion(question);
     }
-  });
-
-  const markQuestionUsedMutation = useMutation({
-    mutationFn: async (questionId: number) => {
-      await apiRequest("POST", `/api/questions/${questionId}/used`, {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/topics/${topic.id}/questions`] });
-    }
-  });
-
-  // Group questions by points.  This handles cases where there are fewer than 2 questions for a point value.
-  const questionsByPoints = {
-    200: questions.filter(q => q.points === 200 && !q.used),
-    400: questions.filter(q => q.points === 400 && !q.used),
-    600: questions.filter(q => q.points === 600 && !q.used)
   };
 
-  const handleQuestionClick = (question: Question) => {
-    if (!selectedTeam) return;
-    setSelectedQuestion(question);
-  };
-
-  const handleQuestionAnswer = async (correct: boolean) => {
-    if (!selectedTeam || !selectedQuestion) return;
-
-    const pointChange = correct ? selectedQuestion.points : 0;
-    const newScore = selectedTeam.score + pointChange;
-
-    await updateScoreMutation.mutateAsync({
-      teamId: selectedTeam.id,
-      score: newScore
-    });
-
-    await markQuestionUsedMutation.mutateAsync(selectedQuestion.id);
-
+  const handleDialogClose = () => {
+    if (selectedQuestion) {
+      setAnsweredQuestions((prev) => [...prev, selectedQuestion.id]);
+    }
     setSelectedQuestion(null);
-    onTeamSelect(null);
+    refetch();
   };
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="h-full flex flex-col overflow-hidden shadow-lg border-2 hover:border-primary/50 transition-all">
+        <CardHeader className="pb-2 pt-4 px-4 bg-primary/10">
+          <CardTitle className="text-lg font-bold text-center flex items-center justify-center gap-2">
             <span className="text-2xl">{topic.icon}</span>
             <span>{topic.name}</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-2">
-          {[200, 400, 600].map((points) => {
-            const availableQuestions = questionsByPoints[points as keyof typeof questionsByPoints];
-            //Improved to handle less than two questions per point value.
+        <CardContent className="p-2 flex-grow grid gap-2">
+          {pointsOptions.map((points) => {
+            const question = questions.find((q) => q.points === points);
+            const isAnswered = question ? answeredQuestions.includes(question.id) : false;
+            const isEmpty = !question;
+
             return (
-              <>
-                {availableQuestions.map((question, index) => (
-                  <Button
-                    key={`${points}-${index + 1}`}
-                    className="h-16"
-                    variant={selectedTeam ? "default" : "outline"}
-                    disabled={!selectedTeam || index >= availableQuestions.length}
-                    onClick={() => handleQuestionClick(question)}
-                  >
-                    {points}
-                  </Button>
-                ))}
-              </>
+              <button
+                key={points}
+                onClick={() => !isEmpty && !isAnswered && handleQuestionClick(points)}
+                disabled={isEmpty || isAnswered}
+                className={`w-full py-3 text-center font-bold rounded-md text-lg transition-all
+                  ${
+                    isAnswered
+                      ? "bg-gray-300 text-gray-500 line-through"
+                      : isEmpty
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-primary text-primary-foreground hover:bg-primary/80 cursor-pointer"
+                  }
+                `}
+              >
+                {points}
+              </button>
             );
           })}
         </CardContent>
       </Card>
 
-      {selectedQuestion && (
-        <QuestionDialog
-          open={!!selectedQuestion}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedQuestion(null);
-              onTeamSelect(null);
-            }
-          }}
-          question={selectedQuestion}
-          team={selectedTeam}
-          onAnswer={handleQuestionAnswer}
-          teams={teams}
-        />
-      )}
+      <QuestionDialog
+        open={!!selectedQuestion}
+        onOpenChange={(open) => !open && setSelectedQuestion(null)}
+        question={selectedQuestion}
+        onClose={handleDialogClose}
+      />
     </>
   );
 }

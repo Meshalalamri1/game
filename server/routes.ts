@@ -82,14 +82,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(team);
   });
 
-  app.patch("/api/teams/:id/score", async (req, res) => {
-    const { score } = req.body;
-    if (typeof score !== "number") {
-      return res.status(400).json({ error: "Score must be a number" });
+  app.patch("/api/teams/:id", async (req, res) => {
+    const teamId = parseInt(req.params.id);
+    const { addScore } = req.body;
+
+    // Get current team data
+    const team = await storage.getTeamById(teamId);
+
+    if (!team) {
+      return res.status(404).json({ error: "الفريق غير موجود" });
     }
-    const team = await storage.updateTeamScore(Number(req.params.id), score);
-    res.json(team);
+
+    // Update team score
+    const updatedTeam = await storage.updateTeamScore(teamId, team.score + (addScore || 0));
+
+    res.json(updatedTeam);
   });
+
 
   app.delete("/api/teams/:id", async (req, res) => {
     try {
