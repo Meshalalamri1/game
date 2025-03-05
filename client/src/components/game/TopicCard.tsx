@@ -112,7 +112,12 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
 
       <QuestionDialog
         open={!!selectedQuestion}
-        onOpenChange={() => setSelectedQuestion(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedQuestion(null);
+            onTeamSelect(null);
+          }
+        }}
         question={selectedQuestion}
         team={selectedTeam}
         onAnswer={handleQuestionAnswer}
