@@ -73,10 +73,8 @@ export class MemStorage implements IStorage {
   }
 
   async getQuestions(topicId: number): Promise<Question[]> {
-    if (!this.topics.has(topicId)) {
-      throw new Error(`Topic with id ${topicId} not found`);
-    }
-    return Array.from(this.questions.values()).filter(q => q.topicId === topicId);
+    return Array.from(this.questions.values())
+      .filter(q => q.topicId === topicId);
   }
 
   async createQuestion(question: InsertQuestion): Promise<Question> {
@@ -143,14 +141,19 @@ export class MemStorage implements IStorage {
   }
 
   async resetGame(): Promise<void> {
-    for (const [id, question] of this.questions.entries()) {
+    // Reset all questions to unused
+    const questions = Array.from(this.questions.entries());
+    for (const [id, question] of questions) {
       this.questions.set(id, { ...question, used: false });
     }
 
-    for (const [id, team] of this.teams.entries()) {
+    // Reset all team scores to 0
+    const teams = Array.from(this.teams.entries());
+    for (const [id, team] of teams) {
       this.teams.set(id, { ...team, score: 0 });
     }
   }
+
   async clearAllQuestions(): Promise<void> {
     this.questions.clear();
     this.currentIds.question = 1;

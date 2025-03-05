@@ -79,7 +79,7 @@ export default function Admin() {
   });
 
   const { data: questions = [] } = useQuery<Question[]>({
-    queryKey: ["/api/topics", selectedTopicId, "questions"],
+    queryKey: [`/api/topics/${selectedTopicId}/questions`],
     enabled: !!selectedTopicId,
   });
 
@@ -98,7 +98,11 @@ export default function Admin() {
     mutationFn: (data: z.infer<typeof insertQuestionSchema>) =>
       apiRequest("POST", "/api/questions", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/topics"] });
+      if (selectedTopicId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/topics/${selectedTopicId}/questions`] 
+        });
+      }
       addQuestionForm.reset();
       toast({ title: "تم إضافة السؤال بنجاح" });
     },
@@ -136,7 +140,7 @@ export default function Admin() {
     onSuccess: () => {
       if (selectedTopicId) {
         queryClient.invalidateQueries({ 
-          queryKey: ["/api/topics", selectedTopicId, "questions"]
+          queryKey: [`/api/topics/${selectedTopicId}/questions`] 
         });
       }
       toast({ title: "تم حذف السؤال بنجاح" });
@@ -170,6 +174,11 @@ export default function Admin() {
     mutationFn: () => apiRequest("POST", "/api/questions/clear"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/topics"] });
+      if (selectedTopicId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/topics/${selectedTopicId}/questions`] 
+        });
+      }
       toast({ title: "تم حذف جميع الأسئلة بنجاح" });
     },
     onError: (error: Error) => {
