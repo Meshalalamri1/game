@@ -17,8 +17,9 @@ interface TopicCardProps {
 export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: TopicCardProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
-  const { data: questions = [] } = useQuery({
-    queryKey: ["/api/topics", topic.id, "questions"]
+  const { data: questions = [] } = useQuery<Question[]>({
+    queryKey: ["/api/topics", topic.id, "questions"],
+    enabled: true
   });
 
   const updateScoreMutation = useMutation({
@@ -62,7 +63,7 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
     });
 
     await markQuestionUsedMutation.mutateAsync(selectedQuestion.id);
-    
+
     setSelectedQuestion(null);
     onTeamSelect(null);
   };
@@ -78,13 +79,13 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-2">
           {[200, 400, 600].map((points) => (
-            questionsByPoints[points].length > 0 ? (
+            questionsByPoints[points as keyof typeof questionsByPoints].length > 0 ? (
               <Button
                 key={points}
                 className="h-16"
                 variant={selectedTeam ? "default" : "outline"}
                 disabled={!selectedTeam}
-                onClick={() => handleQuestionClick(questionsByPoints[points][0])}
+                onClick={() => handleQuestionClick(questionsByPoints[points as keyof typeof questionsByPoints][0])}
               >
                 {points}
               </Button>
