@@ -54,7 +54,7 @@ export default function Admin() {
 
   // Mutations
   const addTopic = useMutation({
-    mutationFn: (data: z.infer<typeof insertTopicSchema>) => 
+    mutationFn: (data: z.infer<typeof insertTopicSchema>) =>
       apiRequest("POST", "/api/topics", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/topics"] });
@@ -64,7 +64,7 @@ export default function Admin() {
   });
 
   const addQuestion = useMutation({
-    mutationFn: (data: z.infer<typeof insertQuestionSchema>) => 
+    mutationFn: (data: z.infer<typeof insertQuestionSchema>) =>
       apiRequest("POST", "/api/questions", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/topics"] });
@@ -74,7 +74,7 @@ export default function Admin() {
   });
 
   const addTeam = useMutation({
-    mutationFn: (data: z.infer<typeof insertTeamSchema>) => 
+    mutationFn: (data: z.infer<typeof insertTeamSchema>) =>
       apiRequest("POST", "/api/teams", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
@@ -82,6 +82,21 @@ export default function Admin() {
       toast({ title: "تم إضافة الفريق بنجاح" });
     },
   });
+
+  const [showTopics, setShowTopics] = useState(false);
+
+  // Placeholder for deleteTopic mutation -  REPLACE THIS WITH ACTUAL IMPLEMENTATION
+  const deleteTopic = useMutation({
+    mutationFn: (topicId: number) => apiRequest("DELETE", `/api/topics/${topicId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/topics"] });
+      toast({ title: "تم حذف الموضوع بنجاح" });
+    },
+    onError: (error) => {
+      toast({ title: "حدث خطأ أثناء حذف الموضوع", description: error.message, status: "error" });
+    }
+  });
+
 
   return (
     <div className="container mx-auto p-4 rtl">
@@ -102,38 +117,76 @@ export default function Admin() {
         <TabsContent value="topics">
           <Card>
             <CardHeader>
-              <CardTitle>إضافة موضوع جديد</CardTitle>
+              <CardTitle>إدارة المواضيع</CardTitle>
             </CardHeader>
             <CardContent>
               <Form {...addTopicForm}>
-                <form onSubmit={addTopicForm.handleSubmit((data) => addTopic.mutate(data))} className="space-y-4">
-                  <FormField
-                    control={addTopicForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>اسم الموضوع</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={addTopicForm.control}
-                    name="icon"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>الرمز</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" disabled={addTopic.isPending}>إضافة</Button>
+                <form onSubmit={addTopicForm.handleSubmit(data => addTopic.mutate(data))} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={addTopicForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>اسم الموضوع</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addTopicForm.control}
+                      name="icon"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>رمز الموضوع</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <Button type="submit" loading={addTopic.isPending}>
+                    إضافة موضوع
+                  </Button>
                 </form>
               </Form>
+
+              <div className="mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTopics(!showTopics)}
+                  className="mb-4"
+                >
+                  {showTopics ? "إخفاء المواضيع" : "عرض المواضيع"}
+                </Button>
+
+                {showTopics && (
+                  <div className="border rounded-md p-4">
+                    <h3 className="font-bold mb-4">قائمة المواضيع</h3>
+                    <div className="space-y-2">
+                      {topics.map(topic => (
+                        <div key={topic.id} className="flex justify-between items-center border-b pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{topic.icon}</span>
+                            <span>{topic.name}</span>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteTopic.mutate(topic.id)}
+                            loading={deleteTopic.isPending}
+                          >
+                            حذف
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

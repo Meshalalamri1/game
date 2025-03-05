@@ -19,6 +19,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(topic);
   });
 
+  app.delete("/api/topics/:id", async (req, res) => {
+    const topicId = Number(req.params.id);
+    await storage.deleteTopic(topicId);
+    res.json({ success: true });
+  });
+
   // Questions
   app.get("/api/topics/:topicId/questions", async (req, res) => {
     const questions = await storage.getQuestions(Number(req.params.topicId));
