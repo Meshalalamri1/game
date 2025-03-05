@@ -14,7 +14,10 @@ export async function createTopic(data: { name: string; icon: string }) {
 }
 
 // Questions
-export async function getQuestions(topicId: number) {
+export async function getQuestions(topicId: number | null) {
+  if (topicId === null) {
+    return await db.select().from(questions);
+  }
   return await db.select().from(questions).where(eq(questions.topicId, topicId));
 }
 

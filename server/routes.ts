@@ -48,5 +48,18 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     res.json(team);
   });
 
+  // Create an API endpoint for individual questions
+  app.get("/api/questions/:questionId", async (req, res) => {
+    const questionId = parseInt(req.params.questionId);
+    const questions = await getQuestions(null);
+    const question = questions.find(q => q.id === questionId);
+    
+    if (!question) {
+      return res.status(404).json({ error: "Question not found" });
+    }
+    
+    res.json(question);
+  });
+
   return server;
 }

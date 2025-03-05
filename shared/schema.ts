@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
+import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -6,21 +6,23 @@ export const topics = pgTable("topics", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   icon: text("icon").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const questions = pgTable("questions", {
   id: serial("id").primaryKey(),
-  topicId: integer("topic_id").notNull(),
+  topicId: integer("topic_id").notNull().references(() => topics.id),
   points: integer("points").notNull(),
   question: text("question").notNull(),
   answer: text("answer").notNull(),
-  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const teams = pgTable("teams", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   score: integer("score").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertTopicSchema = createInsertSchema(topics).pick({
