@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,46 +83,51 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
             <span>{topic.name}</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-2">
+        <CardContent className="grid grid-cols-3 gap-2">
           {[200, 400, 600].map((points) => {
             const availableQuestions = questionsByPoints[points as keyof typeof questionsByPoints];
-            return availableQuestions.length > 0 ? (
-              <Button
-                key={points}
-                className="h-16"
-                variant={selectedTeam ? "default" : "outline"}
-                disabled={!selectedTeam}
-                onClick={() => handleQuestionClick(availableQuestions[0])}
-              >
-                {points}
-              </Button>
-            ) : (
-              <Button
-                key={points}
-                className="h-16"
-                variant="outline"
-                disabled
-              >
-                -
-              </Button>
+            // عرض زرين لكل فئة نقاط، وهذا يعني 6 أسئلة إجمالاً
+            return (
+              <>
+                <Button
+                  key={`${points}-1`}
+                  className="h-16"
+                  variant={selectedTeam ? "default" : "outline"}
+                  disabled={!selectedTeam || availableQuestions.length < 1}
+                  onClick={() => availableQuestions.length > 0 && handleQuestionClick(availableQuestions[0])}
+                >
+                  {points}
+                </Button>
+                <Button
+                  key={`${points}-2`}
+                  className="h-16"
+                  variant={selectedTeam ? "default" : "outline"}
+                  disabled={!selectedTeam || availableQuestions.length < 2}
+                  onClick={() => availableQuestions.length > 1 && handleQuestionClick(availableQuestions[1])}
+                >
+                  {points}
+                </Button>
+              </>
             );
           })}
         </CardContent>
       </Card>
 
-      <QuestionDialog
-        open={!!selectedQuestion}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedQuestion(null);
-            onTeamSelect(null);
-          }
-        }}
-        question={selectedQuestion}
-        team={selectedTeam}
-        onAnswer={handleQuestionAnswer}
-        teams={teams}
-      />
+      {selectedQuestion && (
+        <QuestionDialog
+          open={!!selectedQuestion}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedQuestion(null);
+              onTeamSelect(null);
+            }
+          }}
+          question={selectedQuestion}
+          team={selectedTeam}
+          onAnswer={handleQuestionAnswer}
+          teams={teams}
+        />
+      )}
     </>
   );
 }
