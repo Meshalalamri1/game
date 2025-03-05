@@ -21,6 +21,11 @@ export async function getQuestions(topicId: number | null) {
   return await db.select().from(questions).where(eq(questions.topicId, topicId));
 }
 
+export async function getQuestionById(questionId: number) {
+  const result = await db.select().from(questions).where(eq(questions.id, questionId));
+  return result[0] || null;
+}
+
 export async function createQuestion(data: { topicId: number; points: number; question: string; answer: string }) {
   const result = await db.insert(questions).values(data).returning();
   return result[0];

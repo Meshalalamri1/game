@@ -1,7 +1,7 @@
 
 import express from "express";
 import { Server } from "http";
-import { getTopics, getQuestions, getTeams, updateTeamScore, createTopic, createQuestion, createTeam } from "./storage.js";
+import { getTopics, getQuestions, getQuestionById, getTeams, updateTeamScore, createTopic, createQuestion, createTeam } from "./storage.js";
 
 export async function registerRoutes(app: express.Express): Promise<Server> {
   const server = new Server(app);
@@ -24,6 +24,20 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       res.json(questions);
     } catch (error) {
       console.error("خطأ في الحصول على الأسئلة:", error);
+      res.status(500).json({ error: "خطأ في الخادم" });
+    }
+  });
+
+  app.get("/api/questions/:questionId", async (req, res) => {
+    try {
+      const questionId = parseInt(req.params.questionId);
+      const question = await getQuestionById(questionId);
+      if (!question) {
+        return res.status(404).json({ error: "السؤال غير موجود" });
+      }
+      res.json(question);
+    } catch (error) {
+      console.error("خطأ في الحصول على السؤال:", error);
       res.status(500).json({ error: "خطأ في الخادم" });
     }
   });
