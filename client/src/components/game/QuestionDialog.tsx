@@ -2,51 +2,58 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Team } from "@/types";
 import { Card } from "@/components/ui/card";
+
+interface Team {
+  id: number;
+  name: string;
+  score: number;
+}
 
 interface Question {
   id: number;
-  topicId: number;
-  points: number;
   question: string;
   answer: string;
-  used: boolean;
+  points: number;
 }
 
 interface QuestionDialogProps {
+  question: Question;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  question: Question;
 }
 
-export function QuestionDialog({ open, onOpenChange, question }: QuestionDialogProps) {
+export function QuestionDialog({ question, open, onOpenChange }: QuestionDialogProps) {
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: teams = [] } = useQuery({
     queryKey: ["teams"],
     queryFn: () => apiRequest("/api/teams"),
   });
 
-  const markQuestionUsedMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/questions/${question.id}/use`, { method: "POST" }),
-    onSuccess: () => {
-      onOpenChange(false);
-      window.location.reload();
-    }
-  });
-
-  const updateTeamScoreMutation = useMutation({
-    mutationFn: ({ teamId, points }: { teamId: number; points: number }) => 
-      apiRequest(`/api/teams/${teamId}/score`, { 
-        method: "POST", 
-        body: JSON.stringify({ points }) 
+  const updateScoreMutation = useMutation({
+    mutationFn: (data: { teamId: number; score: number }) =>
+      apiRequest(`/api/teams/${data.teamId}/score`, {
+        method: "PATCH",
+        body: JSON.stringify({ score: data.score }),
       }),
     onSuccess: () => {
-      markQuestionUsedMutation.mutate();
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      onOpenChange(false);
+    },
+  });
+
+  const markQuestionUsedMutation = useMutation({
+    mutationFn: () => 
+      apiRequest(`/api/questions/${question.id}/used`, {
+        method: "POST"
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["questions"] });
     }
   });
 
@@ -54,26 +61,19 @@ export function QuestionDialog({ open, onOpenChange, question }: QuestionDialogP
     setSelectedTeam(team);
   };
 
-  const handleCorrect = () => {
+  const handleAwardPoints = () => {
     if (selectedTeam) {
-      updateTeamScoreMutation.mutate({ 
-        teamId: selectedTeam.id, 
-        points: question.points 
+      updateScoreMutation.mutate({
+        teamId: selectedTeam.id,
+        score: selectedTeam.score + question.points,
       });
-    }
-  };
-
-  const handleIncorrect = () => {
-    if (selectedTeam) {
-      updateTeamScoreMutation.mutate({ 
-        teamId: selectedTeam.id, 
-        points: -question.points 
-      });
+      markQuestionUsedMutation.mutate();
     }
   };
 
   const handleClose = () => {
     markQuestionUsedMutation.mutate();
+    onOpenChange(false);
   };
 
   return (
@@ -111,23 +111,14 @@ export function QuestionDialog({ open, onOpenChange, question }: QuestionDialogP
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col sm:flex-row gap-2">
-          <Button
-            onClick={handleCorrect}
-            className="bg-green-600 hover:bg-green-700"
-            disabled={!selectedTeam}
-          >
-            إجابة صحيحة
-          </Button>
-          <Button
-            onClick={handleIncorrect}
-            variant="destructive"
-            disabled={!selectedTeam}
-          >
-            إجابة خاطئة
-          </Button>
-          <Button onClick={handleClose} variant="outline" className="mr-auto">
-            تخطي
+        <div className="flex justify-between mt-6">
+          {selectedTeam && (
+            <Button onClick={handleAwardPoints} className="mr-2">
+              منح {selectedTeam.name} {question.points} نقطة
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleClose}>
+            إغلاق
           </Button>
         </div>
       </DialogContent>

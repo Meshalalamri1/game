@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
@@ -6,22 +7,21 @@ import { QuestionDialog } from "./QuestionDialog";
 
 interface Question {
   id: number;
-  topicId: number;
-  points: number;
   question: string;
   answer: string;
+  points: number;
   used: boolean;
 }
 
 interface TopicCardProps {
   id: number;
   name: string;
-  icon: string;
+  points: number;
 }
 
-export function TopicCard({ id, name, icon }: TopicCardProps) {
+export function TopicCard({ id, name, points }: TopicCardProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
-  const [open, setOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: questions = [] } = useQuery({
     queryKey: ["questions", id],
@@ -30,41 +30,36 @@ export function TopicCard({ id, name, icon }: TopicCardProps) {
 
   const handleQuestionClick = (question: Question) => {
     setSelectedQuestion(question);
-    setOpen(true);
+    setDialogOpen(true);
   };
 
-  const points = [200, 400, 600, 800, 1000];
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setSelectedQuestion(null);
+    }
+  };
+
+  const getQuestionForPoints = (points: number) => {
+    return questions.find((q: Question) => q.points === points && !q.used);
+  };
+
+  const question = getQuestionForPoints(points);
 
   return (
-    <Card className="w-full">
-      <CardHeader className="text-center">
-        <CardTitle className="flex justify-center items-center gap-2">
-          {icon} {name}
-        </CardTitle>
+    <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => question && handleQuestionClick(question)}>
+      <CardHeader className="p-3">
+        <CardTitle className="text-center text-lg">{name}</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {points.map((point) => {
-          const question = questions.find((q: Question) => q.points === point);
-          return (
-            <button
-              key={point}
-              className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded text-xl ${
-                question?.used ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              disabled={!question || question.used}
-              onClick={() => question && handleQuestionClick(question)}
-            >
-              {point}
-            </button>
-          );
-        })}
+      <CardContent className="p-3 pt-0">
+        <div className="text-center text-2xl font-bold">{points}</div>
+        {!question && <div className="text-center text-sm text-muted-foreground mt-1">تم استخدامه</div>}
       </CardContent>
-
       {selectedQuestion && (
         <QuestionDialog
-          open={open}
-          onOpenChange={setOpen}
           question={selectedQuestion}
+          open={dialogOpen}
+          onOpenChange={handleDialogOpenChange}
         />
       )}
     </Card>
