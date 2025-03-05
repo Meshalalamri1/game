@@ -45,6 +45,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  app.delete("/api/questions/:id", async (req, res) => {
+    try {
+      await storage.deleteQuestion(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
   // Teams
   app.get("/api/teams", async (req, res) => {
     const teams = await storage.getTeams();
@@ -67,6 +76,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     const team = await storage.updateTeamScore(Number(req.params.id), score);
     res.json(team);
+  });
+
+  app.delete("/api/teams/:id", async (req, res) => {
+    try {
+      await storage.deleteTeam(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
   });
 
   app.post("/api/game/reset", async (req, res) => {

@@ -8,16 +8,19 @@ export interface IStorage {
   // Topics
   getTopics(): Promise<Topic[]>;
   createTopic(topic: InsertTopic): Promise<Topic>;
+  deleteTopic(id: number): Promise<void>;
 
   // Questions
   getQuestions(topicId: number): Promise<Question[]>;
   createQuestion(question: InsertQuestion): Promise<Question>;
   markQuestionUsed(id: number): Promise<void>;
+  deleteQuestion(id: number): Promise<void>;
 
   // Teams
   getTeams(): Promise<Team[]>;
   createTeam(team: InsertTeam): Promise<Team>;
   updateTeamScore(id: number, score: number): Promise<Team>;
+  deleteTeam(id: number): Promise<void>;
   resetGame(): Promise<void>;
 }
 
@@ -57,6 +60,21 @@ export class MemStorage implements IStorage {
     return newTopic;
   }
 
+  async deleteTopic(id: number): Promise<void> {
+    if (!this.topics.has(id)) {
+      throw new Error(`Topic with id ${id} not found`);
+    }
+    // Delete associated questions first
+    const associatedQuestions = Array.from(this.questions.values())
+      .filter(q => q.topicId === id);
+
+    for (const question of associatedQuestions) {
+      this.questions.delete(question.id);
+    }
+
+    this.topics.delete(id);
+  }
+
   async getQuestions(topicId: number): Promise<Question[]> {
     return Array.from(this.questions.values()).filter(q => q.topicId === topicId);
   }
@@ -73,6 +91,13 @@ export class MemStorage implements IStorage {
     if (question) {
       this.questions.set(id, { ...question, used: true });
     }
+  }
+
+  async deleteQuestion(id: number): Promise<void> {
+    if (!this.questions.has(id)) {
+      throw new Error(`Question with id ${id} not found`);
+    }
+    this.questions.delete(id);
   }
 
   async getTeams(): Promise<Team[]> {
@@ -96,12 +121,19 @@ export class MemStorage implements IStorage {
     return updatedTeam;
   }
 
+  async deleteTeam(id: number): Promise<void> {
+    if (!this.teams.has(id)) {
+      throw new Error(`Team with id ${id} not found`);
+    }
+    this.teams.delete(id);
+  }
+
   async resetGame(): Promise<void> {
-    for (const [id, question] of this.questions) {
+    for (const [id, question] of this.questions.entries()) {
       this.questions.set(id, { ...question, used: false });
     }
 
-    for (const [id, team] of this.teams) {
+    for (const [id, team] of this.teams.entries()) {
       this.teams.set(id, { ...team, score: 0 });
     }
   }

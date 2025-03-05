@@ -21,11 +21,29 @@ interface Topic {
   icon: string;
 }
 
+interface Question {
+  id: number;
+  topicId: number;
+  points: number;
+  question: string;
+  answer: string;
+  used: boolean;
+}
+
+interface Team {
+  id: number;
+  name: string;
+  score: number;
+}
+
 export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showTopics, setShowTopics] = useState(false);
+  const [showTeams, setShowTeams] = useState(false);
+  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
 
-  // Add topic form
+  // Forms
   const addTopicForm = useForm({
     resolver: zodResolver(insertTopicSchema),
     defaultValues: {
@@ -34,7 +52,6 @@ export default function Admin() {
     },
   });
 
-  // Add question form
   const addQuestionForm = useForm({
     resolver: zodResolver(insertQuestionSchema),
     defaultValues: {
@@ -45,7 +62,6 @@ export default function Admin() {
     },
   });
 
-  // Add team form
   const addTeamForm = useForm({
     resolver: zodResolver(insertTeamSchema),
     defaultValues: {
@@ -53,9 +69,18 @@ export default function Admin() {
     },
   });
 
-  // Fetch data
+  // Queries
   const { data: topics = [] } = useQuery<Topic[]>({
     queryKey: ["/api/topics"]
+  });
+
+  const { data: teams = [] } = useQuery<Team[]>({
+    queryKey: ["/api/teams"]
+  });
+
+  const { data: questions = [] } = useQuery<Question[]>({
+    queryKey: ["/api/topics", selectedTopicId, "questions"],
+    enabled: !!selectedTopicId,
   });
 
   // Mutations
@@ -89,24 +114,57 @@ export default function Admin() {
     },
   });
 
-  const [showTopics, setShowTopics] = useState(false);
+  const deleteTeam = useMutation({
+    mutationFn: (teamId: number) => 
+      apiRequest("DELETE", `/api/teams/${teamId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: "تم حذف الفريق بنجاح" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "حدث خطأ أثناء حذف الفريق",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
 
-  // Placeholder for deleteTopic mutation -  REPLACE THIS WITH ACTUAL IMPLEMENTATION
+  const deleteQuestion = useMutation({
+    mutationFn: (questionId: number) =>
+      apiRequest("DELETE", `/api/questions/${questionId}`),
+    onSuccess: () => {
+      if (selectedTopicId) {
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/topics", selectedTopicId, "questions"]
+        });
+      }
+      toast({ title: "تم حذف السؤال بنجاح" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "حدث خطأ أثناء حذف السؤال",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const deleteTopic = useMutation({
-    mutationFn: (topicId: number) => apiRequest("DELETE", `/api/topics/${topicId}`),
+    mutationFn: (topicId: number) => 
+      apiRequest("DELETE", `/api/topics/${topicId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/topics"] });
       toast({ title: "تم حذف الموضوع بنجاح" });
     },
     onError: (error: Error) => {
       toast({ 
-        title: "حدث خطأ أثناء حذف الموضوع", 
+        title: "حدث خطأ أثناء حذف الموضوع",
         description: error.message,
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
   });
-
 
   return (
     <div className="container mx-auto p-4 rtl">
@@ -124,6 +182,7 @@ export default function Admin() {
           <TabsTrigger value="teams">الفرق</TabsTrigger>
         </TabsList>
 
+        {/* Topics Tab */}
         <TabsContent value="topics">
           <Card>
             <CardHeader>
@@ -201,10 +260,11 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
+        {/* Questions Tab */}
         <TabsContent value="questions">
           <Card>
             <CardHeader>
-              <CardTitle>إضافة سؤال جديد</CardTitle>
+              <CardTitle>إدارة الأسئلة</CardTitle>
             </CardHeader>
             <CardContent>
               <Form {...addQuestionForm}>
@@ -215,7 +275,12 @@ export default function Admin() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>الموضوع</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(Number(value))}>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(Number(value));
+                            setSelectedTopicId(Number(value));
+                          }}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="اختر موضوعاً" />
                           </SelectTrigger>
@@ -276,14 +341,39 @@ export default function Admin() {
                   <Button type="submit" disabled={addQuestion.isPending}>إضافة</Button>
                 </form>
               </Form>
+
+              {selectedTopicId && questions.length > 0 && (
+                <div className="mt-6 border rounded-md p-4">
+                  <h3 className="font-bold mb-4">الأسئلة الحالية</h3>
+                  <div className="space-y-2">
+                    {questions.map((question: Question) => (
+                      <div key={question.id} className="flex justify-between items-center border-b pb-2">
+                        <div>
+                          <div className="font-semibold">{question.question}</div>
+                          <div className="text-sm text-gray-500">النقاط: {question.points}</div>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deleteQuestion.mutate(question.id)}
+                          disabled={deleteQuestion.isPending}
+                        >
+                          حذف
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Teams Tab */}
         <TabsContent value="teams">
           <Card>
             <CardHeader>
-              <CardTitle>إضافة فريق جديد</CardTitle>
+              <CardTitle>إدارة الفرق</CardTitle>
             </CardHeader>
             <CardContent>
               <Form {...addTeamForm}>
@@ -303,6 +393,40 @@ export default function Admin() {
                   <Button type="submit" disabled={addTeam.isPending}>إضافة</Button>
                 </form>
               </Form>
+
+              <div className="mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTeams(!showTeams)}
+                  className="mb-4"
+                >
+                  {showTeams ? "إخفاء الفرق" : "عرض الفرق"}
+                </Button>
+
+                {showTeams && (
+                  <div className="border rounded-md p-4">
+                    <h3 className="font-bold mb-4">قائمة الفرق</h3>
+                    <div className="space-y-2">
+                      {teams.map((team: Team) => (
+                        <div key={team.id} className="flex justify-between items-center border-b pb-2">
+                          <div>
+                            <span>{team.name}</span>
+                            <span className="text-sm text-gray-500 mr-2">({team.score} نقطة)</span>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteTeam.mutate(team.id)}
+                            disabled={deleteTeam.isPending}
+                          >
+                            حذف
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
