@@ -2,98 +2,71 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import QuestionDialog from "./QuestionDialog";
-import type { Topic, Team, Question } from "@shared/schema";
-import { Button } from "@/components/ui/button";
+import { QuestionDialog } from "./QuestionDialog";
 
-interface TopicCardProps {
-  topic: Topic;
-  teams: Team[];
-  selectedTeam: Team | null;
-  onTeamSelect: (team: Team | null) => void;
+interface Question {
+  id: number;
+  topicId: number;
+  points: number;
+  question: string;
+  answer: string;
+  used: boolean;
 }
 
-export default function TopicCard({ topic, teams, selectedTeam, onTeamSelect }: TopicCardProps) {
+interface TopicCardProps {
+  id: number;
+  name: string;
+  icon: string;
+}
+
+export function TopicCard({ id, name, icon }: TopicCardProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [open, setOpen] = useState(false);
 
   const { data: questions = [] } = useQuery({
-    queryKey: [`/api/topics/${topic.id}/questions`],
-    queryFn: () => apiRequest("GET", `/api/topics/${topic.id}/questions`),
+    queryKey: ["questions", id],
+    queryFn: () => apiRequest(`/api/topics/${id}/questions`),
   });
 
   const handleQuestionClick = (question: Question) => {
     setSelectedQuestion(question);
+    setOpen(true);
   };
 
-  const handleQuestionAnswer = (correct: boolean) => {
-    // This function is called after a question has been answered
-    console.log(`Question answered ${correct ? 'correctly' : 'incorrectly'}`);
-  };
-
-  // Group questions by points
-  const questionsByPoints: Record<number, Question[]> = {};
-  questions.forEach((q: Question) => {
-    if (!questionsByPoints[q.points]) {
-      questionsByPoints[q.points] = [];
-    }
-    questionsByPoints[q.points].push(q);
-  });
-
-  // Sort points in ascending order
-  const pointsCategories = Object.keys(questionsByPoints)
-    .map(Number)
-    .sort((a, b) => a - b);
+  const points = [200, 400, 600, 800, 1000];
 
   return (
-    <>
-      <Card className="h-full">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-center">{topic.name}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-2">
-          {pointsCategories.map((points) => {
-            const questionsInCategory = questionsByPoints[points].filter(
-              (q: Question) => !q.used
-            );
-            return questionsInCategory.length > 0 ? (
-              <Button
-                key={`${topic.id}-${points}`}
-                variant="outline"
-                className="h-16 text-lg font-bold"
-                onClick={() => handleQuestionClick(questionsInCategory[0])}
-                disabled={!selectedTeam}
-              >
-                {points}
-              </Button>
-            ) : (
-              <Button
-                key={`${topic.id}-${points}`}
-                variant="outline"
-                className="h-16 text-lg font-bold opacity-50"
-                disabled
-              >
-                {points}
-              </Button>
-            );
-          })}
-        </CardContent>
-      </Card>
+    <Card className="w-full">
+      <CardHeader className="text-center">
+        <CardTitle className="flex justify-center items-center gap-2">
+          {icon} {name}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {points.map((point) => {
+          const question = questions.find((q: Question) => q.points === point);
+          return (
+            <button
+              key={point}
+              className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded text-xl ${
+                question?.used ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={!question || question.used}
+              onClick={() => question && handleQuestionClick(question)}
+            >
+              {point}
+            </button>
+          );
+        })}
+      </CardContent>
 
       {selectedQuestion && (
         <QuestionDialog
-          open={!!selectedQuestion}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedQuestion(null);
-              onTeamSelect(null);
-            }
-          }}
+          open={open}
+          onOpenChange={setOpen}
           question={selectedQuestion}
-          team={selectedTeam}
-          onAnswer={handleQuestionAnswer}
-          teams={teams}
         />
       )}
-    </>
+    </Card>
   );
 }
