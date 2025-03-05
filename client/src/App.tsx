@@ -5,15 +5,15 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Game from "@/pages/Game";
 import Admin from "@/pages/Admin";
-import QuestionPage from "@/pages/QuestionPage"; // Added import for QuestionPage
+import QuestionPage from "@/pages/QuestionPage";
 
-function AppRouter() { //Renamed to avoid conflict with the main App component.
+function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<Game />} />
       <Route path="/admin" element={<Admin />} />
-      <Route path="/question/:questionId" element={<QuestionPage />} /> {/* Added route for QuestionPage */}
-      <Route path="*" element={<NotFound />} /> {/* Added a catch-all route for 404 */}
+      <Route path="/question/:questionId" element={<QuestionPage />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

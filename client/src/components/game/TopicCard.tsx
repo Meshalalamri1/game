@@ -1,47 +1,23 @@
-
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
-interface Question {
-  id: number;
-  points: number;
-  question: string;
-  answer: string;
-}
-
-interface TopicCardProps {
-  topicId: number;
-  name: string;
-  icon: string;
-  questions: Question[];
-}
-
-export default function TopicCard({ topicId, name, icon, questions }: TopicCardProps) {
-  const navigate = useNavigate();
-
-  const handleQuestionClick = (questionId: number) => {
-    navigate(`/question/${questionId}`);
-  };
-
+export function TopicCard({ topic, questions }) {
   return (
-    <Card className="h-full">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="text-2xl">{icon}</div>
-          <h2 className="text-xl font-semibold">{name}</h2>
-        </div>
-        <div className="grid grid-cols-1 gap-2">
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="grid grid-cols-3 divide-x divide-y">
           {questions.map((question) => (
-            <Button
+            <Link
               key={question.id}
-              variant="outline"
-              className="w-full justify-between"
-              onClick={() => handleQuestionClick(question.id)}
+              to={`/question/${question.id}`}
+              className="flex items-center justify-center p-4 text-lg font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
             >
-              <span>{question.points} نقطة</span>
-            </Button>
+              {question.points}
+            </Link>
           ))}
+        </div>
+        <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground font-semibold">
+          {topic.icon} {topic.name}
         </div>
       </CardContent>
     </Card>
