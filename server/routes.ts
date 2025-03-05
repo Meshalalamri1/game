@@ -20,9 +20,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/topics/:id", async (req, res) => {
-    const topicId = Number(req.params.id);
-    await storage.deleteTopic(topicId);
-    res.json({ success: true });
+    try {
+      await storage.deleteTopic(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
   });
 
   // Questions
@@ -51,6 +54,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  // Clear all questions
+  app.post("/api/questions/clear", async (req, res) => {
+    try {
+      await storage.clearAllQuestions();
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
     }
   });
 

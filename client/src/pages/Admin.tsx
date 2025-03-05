@@ -166,13 +166,37 @@ export default function Admin() {
     }
   });
 
+  const clearAllQuestions = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/questions/clear"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/topics"] });
+      toast({ title: "تم حذف جميع الأسئلة بنجاح" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "حدث خطأ أثناء حذف الأسئلة",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   return (
     <div className="container mx-auto p-4 rtl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">إدارة اللعبة</h1>
-        <Link href="/">
-          <Button variant="outline">العودة إلى اللعبة</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Button 
+            variant="destructive"
+            onClick={() => clearAllQuestions.mutate()}
+            disabled={clearAllQuestions.isPending}
+          >
+            حذف جميع الأسئلة
+          </Button>
+          <Link href="/">
+            <Button variant="outline">العودة إلى اللعبة</Button>
+          </Link>
+        </div>
       </div>
 
       <Tabs defaultValue="topics" className="w-full">

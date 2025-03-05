@@ -1,8 +1,4 @@
 import { type Topic, type Question, type Team, type InsertTopic, type InsertQuestion, type InsertTeam } from "@shared/schema";
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { neon } from '@neondatabase/serverless';
-import { topics, questions, teams } from "@shared/schema";
-import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Topics
@@ -15,6 +11,7 @@ export interface IStorage {
   createQuestion(question: InsertQuestion): Promise<Question>;
   markQuestionUsed(id: number): Promise<void>;
   deleteQuestion(id: number): Promise<void>;
+  clearAllQuestions(): Promise<void>;
 
   // Teams
   getTeams(): Promise<Team[]>;
@@ -153,6 +150,10 @@ export class MemStorage implements IStorage {
     for (const [id, team] of this.teams.entries()) {
       this.teams.set(id, { ...team, score: 0 });
     }
+  }
+  async clearAllQuestions(): Promise<void> {
+    this.questions.clear();
+    this.currentIds.question = 1;
   }
 }
 
