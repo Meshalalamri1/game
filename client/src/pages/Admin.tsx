@@ -55,7 +55,7 @@ export default function Admin() {
   const addQuestionForm = useForm({
     resolver: zodResolver(insertQuestionSchema),
     defaultValues: {
-      topicId: 0,
+      topicId: 1, // تعيين قيمة أولية صالحة
       points: 200,
       question: "",
       answer: "",
@@ -164,6 +164,26 @@ export default function Admin() {
     onError: (error: Error) => {
       toast({ 
         title: "حدث خطأ أثناء حذف الموضوع",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteQuestion = useMutation({
+    mutationFn: (questionId: number) => 
+      apiRequest("DELETE", `/api/questions/${questionId}`),
+    onSuccess: () => {
+      if (selectedTopicId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/topics/${selectedTopicId}/questions`] 
+        });
+      }
+      toast({ title: "تم حذف السؤال بنجاح" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "حدث خطأ أثناء حذف السؤال",
         description: error.message,
         variant: "destructive"
       });
@@ -301,7 +321,23 @@ export default function Admin() {
             </CardHeader>
             <CardContent>
               <Form {...addQuestionForm}>
-                <form onSubmit={addQuestionForm.handleSubmit((data) => addQuestion.mutate(data))} className="space-y-4">
+                <form onSubmit={addQuestionForm.handleSubmit((data) => {
+                  // التحقق مما إذا كان هناك بالفعل سؤالين بنفس النقاط
+                  const pointsValue = data.points;
+                  const questionsWithSamePoints = questions.filter(q => 
+                    q.topicId === data.topicId && q.points === pointsValue
+                  );
+                  
+                  if (questionsWithSamePoints.length >= 2) {
+                    toast({ 
+                      title: "لا يمكن إضافة أكثر من سؤالين لنفس فئة النقاط", 
+                      variant: "destructive" 
+                    });
+                    return;
+                  }
+                  
+                  addQuestion.mutate(data);
+                })} className="space-y-4">
                   <FormField
                     control={addQuestionForm.control}
                     name="topicId"
@@ -387,6 +423,8 @@ export default function Admin() {
                         </div>
                         <Button
                           variant="destructive"
+                          onClick={() => deleteQuestion.mutate(question.id)}
+                          disabled={deleteQuestion.isPending}
                           size="sm"
                           onClick={() => deleteQuestion.mutate(question.id)}
                           disabled={deleteQuestion.isPending}

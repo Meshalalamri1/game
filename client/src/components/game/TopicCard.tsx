@@ -41,7 +41,7 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
     }
   });
 
-  // Group questions by points
+  // Group questions by points.  This handles cases where there are fewer than 2 questions for a point value.
   const questionsByPoints = {
     200: questions.filter(q => q.points === 200 && !q.used),
     400: questions.filter(q => q.points === 400 && !q.used),
@@ -86,27 +86,20 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
         <CardContent className="grid grid-cols-3 gap-2">
           {[200, 400, 600].map((points) => {
             const availableQuestions = questionsByPoints[points as keyof typeof questionsByPoints];
-            // عرض زرين لكل فئة نقاط، وهذا يعني 6 أسئلة إجمالاً
+            //Improved to handle less than two questions per point value.
             return (
               <>
-                <Button
-                  key={`${points}-1`}
-                  className="h-16"
-                  variant={selectedTeam ? "default" : "outline"}
-                  disabled={!selectedTeam || availableQuestions.length < 1}
-                  onClick={() => availableQuestions.length > 0 && handleQuestionClick(availableQuestions[0])}
-                >
-                  {points}
-                </Button>
-                <Button
-                  key={`${points}-2`}
-                  className="h-16"
-                  variant={selectedTeam ? "default" : "outline"}
-                  disabled={!selectedTeam || availableQuestions.length < 2}
-                  onClick={() => availableQuestions.length > 1 && handleQuestionClick(availableQuestions[1])}
-                >
-                  {points}
-                </Button>
+                {availableQuestions.map((question, index) => (
+                  <Button
+                    key={`${points}-${index + 1}`}
+                    className="h-16"
+                    variant={selectedTeam ? "default" : "outline"}
+                    disabled={!selectedTeam || index >= availableQuestions.length}
+                    onClick={() => handleQuestionClick(question)}
+                  >
+                    {points}
+                  </Button>
+                ))}
               </>
             );
           })}
