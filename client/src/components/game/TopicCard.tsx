@@ -17,8 +17,9 @@ interface TopicCardProps {
 export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: TopicCardProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
-  const { data: questions = [] } = useQuery<Question[]>({
-    queryKey: ["/api/topics", topic.id, "questions"],
+  // Fetch questions for this topic
+  const { data: questions = [], isLoading } = useQuery<Question[]>({
+    queryKey: [`/api/topics/${topic.id}/questions`],
     enabled: true
   });
 
@@ -36,10 +37,11 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
       await apiRequest("POST", `/api/questions/${questionId}/used`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/topics", topic.id, "questions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/topics/${topic.id}/questions`] });
     }
   });
 
+  // Group questions by points
   const questionsByPoints = {
     200: questions.filter(q => q.points === 200 && !q.used),
     400: questions.filter(q => q.points === 400 && !q.used),
@@ -68,6 +70,10 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
     onTeamSelect(null);
   };
 
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <>
       <Card>
@@ -78,14 +84,15 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-2">
-          {[200, 400, 600].map((points) => (
-            questionsByPoints[points as keyof typeof questionsByPoints].length > 0 ? (
+          {[200, 400, 600].map((points) => {
+            const availableQuestions = questionsByPoints[points as keyof typeof questionsByPoints];
+            return availableQuestions.length > 0 ? (
               <Button
                 key={points}
                 className="h-16"
                 variant={selectedTeam ? "default" : "outline"}
                 disabled={!selectedTeam}
-                onClick={() => handleQuestionClick(questionsByPoints[points as keyof typeof questionsByPoints][0])}
+                onClick={() => handleQuestionClick(availableQuestions[0])}
               >
                 {points}
               </Button>
@@ -98,8 +105,8 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
               >
                 -
               </Button>
-            )
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
