@@ -76,21 +76,38 @@ export class MemStorage implements IStorage {
   }
 
   async getQuestions(topicId: number): Promise<Question[]> {
+    if (!this.topics.has(topicId)) {
+      throw new Error(`Topic with id ${topicId} not found`);
+    }
     return Array.from(this.questions.values()).filter(q => q.topicId === topicId);
   }
 
   async createQuestion(question: InsertQuestion): Promise<Question> {
+    // Verify topic exists
+    if (!this.topics.has(question.topicId)) {
+      throw new Error(`Topic with id ${question.topicId} not found`);
+    }
+
     const id = this.currentIds.question++;
-    const newQuestion = { id, ...question, used: false };
+    const newQuestion = { 
+      id, 
+      topicId: question.topicId,
+      points: question.points,
+      question: question.question,
+      answer: question.answer,
+      used: false 
+    };
+
     this.questions.set(id, newQuestion);
     return newQuestion;
   }
 
   async markQuestionUsed(id: number): Promise<void> {
     const question = this.questions.get(id);
-    if (question) {
-      this.questions.set(id, { ...question, used: true });
+    if (!question) {
+      throw new Error(`Question with id ${id} not found`);
     }
+    this.questions.set(id, { ...question, used: true });
   }
 
   async deleteQuestion(id: number): Promise<void> {
