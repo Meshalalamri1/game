@@ -91,7 +91,7 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
             // تحسين لعرض كل الأسئلة المتاحة لكل فئة نقاط
             return (
               <div key={points} className="flex flex-col gap-2">
-                {availableQuestions.map((question, index) => (
+                {availableQuestions.length > 0 ? availableQuestions.map((question, index) => (
                   <Button
                     key={`${points}-${index}`}
                     className="h-16"
@@ -99,10 +99,9 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
                     disabled={!selectedTeam}
                     onClick={() => handleQuestionClick(question)}
                   >
-                    {points}
+                    {question.points}
                   </Button>
-                ))}
-                {availableQuestions.length === 0 && (
+                )) : (
                   <Button
                     className="h-16"
                     variant="outline"

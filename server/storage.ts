@@ -82,6 +82,15 @@ export class MemStorage implements IStorage {
     if (!this.topics.has(question.topicId)) {
       throw new Error(`Topic with id ${question.topicId} not found`);
     }
+    
+    // تحقق من عدد الأسئلة لنفس الموضوع ونفس فئة النقاط
+    const questionsWithSamePoints = Array.from(this.questions.values())
+      .filter(q => q.topicId === question.topicId && q.points === question.points);
+    
+    // التحقق من أنه لا يوجد أكثر من سؤالين لنفس فئة النقاط
+    if (questionsWithSamePoints.length >= 2) {
+      throw new Error(`يوجد بالفعل سؤالين لفئة ${question.points} نقطة لهذا الموضوع`);
+    }
 
     const id = this.currentIds.question++;
     const newQuestion = { 

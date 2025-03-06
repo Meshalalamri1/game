@@ -341,7 +341,10 @@ export default function Admin() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>النقاط</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(Number(value))}>
+                        <Select 
+                          defaultValue={String(field.value)} 
+                          onValueChange={(value) => field.onChange(Number(value))}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="اختر النقاط" />
                           </SelectTrigger>
