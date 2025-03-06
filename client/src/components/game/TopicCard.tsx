@@ -1,15 +1,9 @@
 
-import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Question, Topic } from "@shared/schema";
-import { useToast } from "@/components/ui/use-toast";
+import { useState } from "react";
 import axios from "axios";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
 
 interface TopicCardProps {
   topic: Topic;
@@ -23,13 +17,55 @@ export default function TopicCard({
   topic,
   questions,
   selectedTeam,
+  onQuestionClick,
   onTeamScoreUpdate,
 }: TopicCardProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const { toast } = useToast();
-  
-  // تصنيف الأسئلة حسب النقاط
+
+  const handleQuestionClick = (question: Question) => {
+    setSelectedQuestion(question);
+    setShowAnswer(false);
+    onQuestionClick(question);
+  };
+
+  const handleMarkUsed = async () => {
+    if (selectedQuestion && selectedTeam !== null) {
+      try {
+        await axios.post(`/api/questions/${selectedQuestion.id}/used`);
+        
+        // Find the team
+        const teamsResponse = await axios.get("/api/teams");
+        const teams = teamsResponse.data;
+        const team = teams.find((t: Team) => t.id === selectedTeam);
+        
+        if (team) {
+          // Update team score
+          const newScore = team.score + selectedQuestion.points;
+          await onTeamScoreUpdate(selectedTeam, newScore);
+          
+          toast({
+            title: "تم احتساب النقاط",
+            description: `تم إضافة ${selectedQuestion.points} نقطة إلى الفريق ${team.name}`,
+          });
+          
+          // Reset for the next question
+          setSelectedQuestion(null);
+          setShowAnswer(false);
+        }
+      } catch (error) {
+        console.error("Error marking question as used:", error);
+        toast({
+          title: "خطأ",
+          description: "حدث خطأ أثناء تحديث النقاط",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Group questions by points
   const questionsByPoints = questions.reduce((acc, question) => {
     if (!acc[question.points]) {
       acc[question.points] = [];
@@ -37,45 +73,20 @@ export default function TopicCard({
     acc[question.points].push(question);
     return acc;
   }, {} as Record<number, Question[]>);
-  
-  const handleQuestionClick = (question: Question) => {
-    setSelectedQuestion(question);
-    setShowAnswer(false);
-  };
-  
-  const handleMarkUsed = async () => {
-    if (!selectedQuestion || !selectedTeam) return;
-    
-    try {
-      await axios.post(`/api/questions/${selectedQuestion.id}/used`);
-      // حساب النقاط الجديدة للفريق
-      const newScore = selectedTeam + selectedQuestion.points;
-      await onTeamScoreUpdate(selectedTeam, newScore);
-      setSelectedQuestion(null);
-      toast({
-        title: "تم تحديث النقاط",
-        description: "تم تحديث حالة السؤال ونقاط الفريق بنجاح",
-      });
-    } catch (error) {
-      console.error("Error marking question as used:", error);
-      toast({
-        variant: "destructive",
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث حالة السؤال",
-      });
-    }
-  };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="p-3">
-        <CardTitle className="text-center">{topic.name}</CardTitle>
+    <Card className="w-full h-full flex flex-col">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl flex items-center">
+          <span className="mr-2">{topic.icon}</span>
+          {topic.name}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-2 p-3">
+      <CardContent className="flex-grow">
         {[200, 400, 600].map((points) => {
           const questionsForPoints = questionsByPoints[points] || [];
           const unusedQuestions = questionsForPoints.filter(q => !q.used);
-          
+
           return (
             <div key={points} className="my-2">
               {unusedQuestions.length > 0 ? (
