@@ -385,11 +385,23 @@ export default function Admin() {
                 </form>
               </Form>
 
-              {selectedTopicId && questions.length > 0 && (
+              {selectedTopicId && (
                 <div className="mt-6 border rounded-md p-4">
-                  <h3 className="font-bold mb-4">الأسئلة الحالية</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold">الأسئلة الحالية</h3>
+                    <Button 
+                      onClick={() => {
+                        queryClient.invalidateQueries({ 
+                          queryKey: [`/api/topics/${selectedTopicId}/questions`] 
+                        });
+                      }}
+                      size="sm"
+                    >
+                      تحديث الأسئلة
+                    </Button>
+                  </div>
                   <div className="space-y-2">
-                    {questions.map((question: Question) => (
+                    {questions.length > 0 ? questions.map((question: Question) => (
                       <div key={question.id} className="flex justify-between items-center border-b pb-2 mb-2">
                         <div>
                           <div className="font-semibold">{question.question}</div>
@@ -405,7 +417,11 @@ export default function Admin() {
                           حذف
                         </Button>
                       </div>
-                    ))}
+                    ))) : (
+                      <div className="text-center py-4 text-gray-500">
+                        لا توجد أسئلة لهذا الموضوع. قم بإضافة أسئلة جديدة.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

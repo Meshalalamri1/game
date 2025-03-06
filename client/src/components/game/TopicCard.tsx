@@ -41,17 +41,19 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
     }
   });
 
-  // Group questions by points.  This handles cases where there are fewer than 2 questions for a point value.
+  // Group questions by points and filter out used questions
   const questionsByPoints = questions.reduce(
     (acc, question) => {
       // تحديد فئة النقاط
       const pointsKey = question.points;
 
-      // إضافة السؤال إلى الفئة المناسبة
-      if (!acc[pointsKey]) {
-        acc[pointsKey] = [];
+      // إضافة السؤال إلى الفئة المناسبة إذا لم يتم استخدامه بعد
+      if (!question.used) {
+        if (!acc[pointsKey]) {
+          acc[pointsKey] = [];
+        }
+        acc[pointsKey].push(question);
       }
-      acc[pointsKey].push(question);
 
       return acc;
     },
@@ -64,6 +66,13 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
       questionsByPoints[points] = [];
     }
   });
+
+  // تحديث الأسئلة عند تغيير الفريق المختار
+  useEffect(() => {
+    if (selectedTeam) {
+      queryClient.invalidateQueries({ queryKey: [`/api/topics/${topic.id}/questions`] });
+    }
+  }, [selectedTeam, topic.id]);
 
   const handleQuestionClick = (question: Question) => {
     if (!selectedTeam) return;
