@@ -390,10 +390,11 @@ export default function Admin() {
                   <h3 className="font-bold mb-4">الأسئلة الحالية</h3>
                   <div className="space-y-2">
                     {questions.map((question: Question) => (
-                      <div key={question.id} className="flex justify-between items-center border-b pb-2">
+                      <div key={question.id} className="flex justify-between items-center border-b pb-2 mb-2">
                         <div>
                           <div className="font-semibold">{question.question}</div>
-                          <div className="text-sm text-gray-500">النقاط: {question.points}</div>
+                          <div className="text-sm text-gray-500">النقاط: {question.points} | الإجابة: {question.answer}</div>
+                          <div className="text-xs text-gray-500">الحالة: {question.used ? "تم استخدامه" : "متاح"}</div>
                         </div>
                         <Button
                           variant="destructive"

@@ -42,11 +42,28 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
   });
 
   // Group questions by points.  This handles cases where there are fewer than 2 questions for a point value.
-  const questionsByPoints = {
-    200: questions.filter(q => q.points === 200 && !q.used),
-    400: questions.filter(q => q.points === 400 && !q.used),
-    600: questions.filter(q => q.points === 600 && !q.used)
-  };
+  const questionsByPoints = questions.reduce(
+    (acc, question) => {
+      // تحديد فئة النقاط
+      const pointsKey = question.points;
+
+      // إضافة السؤال إلى الفئة المناسبة
+      if (!acc[pointsKey]) {
+        acc[pointsKey] = [];
+      }
+      acc[pointsKey].push(question);
+
+      return acc;
+    },
+    { 200: [], 400: [], 600: [] } as Record<number, Question[]>
+  );
+
+  // تأكد من أن كل فئة نقاط موجودة
+  [200, 400, 600].forEach(points => {
+    if (!questionsByPoints[points]) {
+      questionsByPoints[points] = [];
+    }
+  });
 
   const handleQuestionClick = (question: Question) => {
     if (!selectedTeam) return;
