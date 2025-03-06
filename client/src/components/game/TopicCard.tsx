@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -9,57 +10,56 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface TopicCardProps {
   topic: Topic;
+  teams: Team[];
   selectedTeam: Team | null;
   onTeamSelect: (team: Team | null) => void;
-  teams: Team[];
 }
 
-export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: TopicCardProps) {
+export default function TopicCard({ topic, teams, selectedTeam, onTeamSelect }: TopicCardProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
-  // Fetch questions for this topic
-  const { data: questions = [], isLoading } = useQuery<Question[]>({
+  // جلب الأسئلة للموضوع
+  const { data: questions = [], isLoading } = useQuery({
     queryKey: [`/api/topics/${topic.id}/questions`],
-    enabled: true
+    queryFn: () => apiRequest("GET", `/api/topics/${topic.id}/questions`),
   });
 
-  const updateScoreMutation = useMutation({
-    mutationFn: async ({ teamId, score }: { teamId: number; score: number }) => {
-      await apiRequest("PATCH", `/api/teams/${teamId}/score`, { score });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-    }
-  });
-
-  const markQuestionUsedMutation = useMutation({
-    mutationFn: async (questionId: number) => {
-      await apiRequest("POST", `/api/questions/${questionId}/used`, {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/topics/${topic.id}/questions`] });
-    }
-  });
-
-  // Group questions by points and filter out used questions
+  // طريقة تنظيم الأسئلة حسب النقاط
   const questionsByPoints = questions.reduce(
-    (acc, question) => {
+    (acc: Record<number, Question[]>, question: Question) => {
       const pointsKey = question.points;
       if (!acc[pointsKey]) {
         acc[pointsKey] = [];
       }
       acc[pointsKey].push(question);
-
       return acc;
     },
-    { 200: [], 400: [], 600: [] } as Record<number, Question[]>
+    {}
   );
 
-  // تأكد من أن كل فئة نقاط موجودة
+  // التأكد من وجود جميع فئات النقاط
   [200, 400, 600].forEach(points => {
     if (!questionsByPoints[points]) {
       questionsByPoints[points] = [];
     }
+  });
+
+  // تعديل الدرجات للفريق
+  const updateScoreMutation = useMutation({
+    mutationFn: (data: { teamId: number; score: number }) =>
+      apiRequest("PATCH", `/api/teams/${data.teamId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+    },
+  });
+
+  // تعليم السؤال كمستخدم
+  const markQuestionUsedMutation = useMutation({
+    mutationFn: (questionId: number) =>
+      apiRequest("PATCH", `/api/questions/${questionId}/used`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/topics/${topic.id}/questions`] });
+    },
   });
 
   // تحديث الأسئلة عند تغيير الفريق المختار
@@ -72,8 +72,7 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
   const handleQuestionClick = (question: Question) => {
     if (!selectedTeam) return;
     setSelectedQuestion(question);
-    // عند اختيار سؤال، قم بتعليمه كمستخدم
-    markQuestionUsedMutation.mutate(question.id);
+    // نحن لا نريد تعليم السؤال كمستخدم هنا، بل فقط عند الإجابة عليه
   };
 
   const handleQuestionAnswer = async (correct: boolean) => {
@@ -87,6 +86,7 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
       score: newScore
     });
 
+    // نقوم بتعليم السؤال كمستخدم بعد الإجابة عليه
     await markQuestionUsedMutation.mutateAsync(selectedQuestion.id);
 
     setSelectedQuestion(null);
@@ -94,7 +94,7 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>جار التحميل...</div>;
   }
 
   return (
@@ -108,33 +108,23 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
         </CardHeader>
         <CardContent className="grid grid-cols-3 gap-2">
           {[200, 400, 600].map((points) => {
-            const questionsForPoints = questionsByPoints[points] || [];
-            const unusedQuestions = questionsForPoints.filter(q => !q.used);
-            const allUsed = questionsForPoints.length > 0 && unusedQuestions.length === 0;
-
+            const questionsForThisPoints = questionsByPoints[points] || [];
+            const unusedQuestions = questionsForThisPoints.filter(q => !q.used);
+            
             return (
               <div key={points} className="my-2">
-                {allUsed ? (
-                  <Button
-                    className="w-full py-8 bg-gray-300 text-gray-500"
-                    disabled
-                  >
-                    {points}
-                  </Button>
-                ) : (
-                  <Button
-                    className="w-full py-8"
-                    onClick={() => {
-                      // اختر أول سؤال غير مستخدم
-                      if (unusedQuestions.length > 0) {
-                        handleQuestionClick(unusedQuestions[0]);
-                      }
-                    }}
-                    disabled={unusedQuestions.length === 0 || !selectedTeam}
-                  >
-                    {points}
-                  </Button>
-                )}
+                <Button
+                  className="w-full py-8"
+                  onClick={() => {
+                    if (unusedQuestions.length > 0) {
+                      handleQuestionClick(unusedQuestions[0]);
+                    }
+                  }}
+                  disabled={unusedQuestions.length === 0 || !selectedTeam}
+                  variant={unusedQuestions.length === 0 ? "outline" : "default"}
+                >
+                  {points}
+                </Button>
               </div>
             );
           })}
@@ -153,7 +143,6 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
           question={selectedQuestion}
           team={selectedTeam}
           onAnswer={handleQuestionAnswer}
-          teams={teams}
         />
       )}
     </>
