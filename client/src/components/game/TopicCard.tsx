@@ -44,16 +44,11 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
   // Group questions by points and filter out used questions
   const questionsByPoints = questions.reduce(
     (acc, question) => {
-      // تحديد فئة النقاط
       const pointsKey = question.points;
-
-      // إضافة السؤال إلى الفئة المناسبة إذا لم يتم استخدامه بعد
-      if (!question.used) {
-        if (!acc[pointsKey]) {
-          acc[pointsKey] = [];
-        }
-        acc[pointsKey].push(question);
+      if (!acc[pointsKey]) {
+        acc[pointsKey] = [];
       }
+      acc[pointsKey].push(question);
 
       return acc;
     },
@@ -113,25 +108,29 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
         </CardHeader>
         <CardContent className="grid grid-cols-3 gap-2">
           {[200, 400, 600].map((points) => {
-            const availableQuestions = questionsByPoints[points as keyof typeof questionsByPoints];
-            // تحسين لعرض كل الأسئلة المتاحة لكل فئة نقاط
+            const questionsForPoints = questionsByPoints[points] || [];
+            const unusedQuestions = questionsForPoints.filter(q => !q.used);
+            const allUsed = questionsForPoints.length > 0 && unusedQuestions.length === 0;
+
             return (
-              <div key={points} className="flex flex-col gap-2">
-                {availableQuestions.length > 0 ? availableQuestions.map((question, index) => (
+              <div key={points} className="my-2">
+                {allUsed ? (
                   <Button
-                    key={`${points}-${index}`}
-                    className="h-16"
-                    variant={selectedTeam ? "default" : "outline"}
-                    disabled={!selectedTeam}
-                    onClick={() => handleQuestionClick(question)}
+                    className="w-full py-8 bg-gray-300 text-gray-500"
+                    disabled
                   >
-                    {question.points}
+                    {points}
                   </Button>
-                )) : (
+                ) : (
                   <Button
-                    className="h-16"
-                    variant="outline"
-                    disabled={true}
+                    className="w-full py-8"
+                    onClick={() => {
+                      // اختر أول سؤال غير مستخدم
+                      if (unusedQuestions.length > 0) {
+                        handleQuestionClick(unusedQuestions[0]);
+                      }
+                    }}
+                    disabled={unusedQuestions.length === 0 || !selectedTeam}
                   >
                     {points}
                   </Button>
