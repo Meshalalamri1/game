@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import axios from "axios";
 
@@ -60,13 +59,14 @@ export default function TopicCard({
   };
 
   // تنظيم الأسئلة حسب النقاط
-  const questionsByPoints = questions.reduce((acc, question) => {
+  const questionsByPoints = Array.isArray(questions) ? questions.reduce((acc, question) => {
     if (question.topicId === topic.id) {
       acc[question.points] = acc[question.points] || [];
       acc[question.points].push(question);
     }
     return acc;
-  }, {} as Record<number, Question[]>);
+    }, {} as Record<number, Question[]>)
+    : {} as Record<number, Question[]>;
 
   return (
     <Card className="h-full flex flex-col">
@@ -109,7 +109,7 @@ export default function TopicCard({
             <div className="mt-4 bg-secondary p-4 rounded-md">
               <h3 className="font-bold mb-2 text-lg">الإجابة:</h3>
               <p className="text-lg">{selectedQuestion.answer}</p>
-              
+
               <div className="mt-4 flex justify-center">
                 <Button onClick={handleMarkUsed} size="lg" className="px-8">
                   احتساب النقاط
