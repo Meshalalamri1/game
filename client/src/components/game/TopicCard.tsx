@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Question, Topic } from "@shared/schema";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import axios from "axios";
 
@@ -82,6 +82,33 @@ export default function TopicCard({
       <CardContent className="grid grid-cols-3 gap-2 p-3">
         {[200, 400, 600].map((points) => {
           const questionsForPoints = questionsByPoints[points] || [];
+          const unusedQuestions = questionsForPoints.filter(q => !q.used);
+          
+          return (
+            <div key={points} className="my-2">
+              {unusedQuestions.length > 0 ? (
+                <Button
+                  className="w-full py-8"
+                  onClick={() => {
+                    if (unusedQuestions.length > 0) {
+                      handleQuestionClick(unusedQuestions[0]);
+                    }
+                  }}
+                  disabled={!selectedTeam}
+                >
+                  {points}
+                </Button>
+              ) : (
+                <Button
+                  className="w-full py-8 bg-gray-300 text-gray-500"
+                  disabled
+                >
+                  {points}
+                </Button>
+              )}
+            </div>
+          );
+          const unusedQuestions = questionsForPoints.filter(q => !q.used);
           const unusedQuestions = questionsForPoints.filter((q) => !q.used);
 
           return (

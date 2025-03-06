@@ -23,9 +23,26 @@ export default function GameBoard({ selectedTeam, onTeamSelect, teams }: GameBoa
         <TopicCard
           key={topic.id}
           topic={topic}
-          selectedTeam={selectedTeam}
-          onTeamSelect={onTeamSelect}
-          teams={teams}
+          questions={topic.questions || []}
+          selectedTeam={selectedTeam ? selectedTeam.id : null}
+          onQuestionClick={(question) => {
+            console.log("Question clicked:", question);
+          }}
+          onTeamScoreUpdate={async (teamId, newScore) => {
+            const team = teams.find(t => t.id === teamId);
+            if (team) {
+              // تحديث النتيجة
+              console.log(`Updating team ${teamId} score to ${newScore}`);
+              return fetch(`/api/teams/${teamId}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ score: newScore })
+              });
+            }
+            return Promise.resolve();
+          }}
         />
       ))}
     </div>
