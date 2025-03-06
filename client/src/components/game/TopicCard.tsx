@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -7,8 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Question, Topic } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 import axios from "axios";
 
 interface TopicCardProps {
@@ -23,37 +23,32 @@ export default function TopicCard({
   topic,
   questions,
   selectedTeam,
-  onQuestionClick,
   onTeamScoreUpdate,
 }: TopicCardProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const { toast } = useToast();
-
+  
+  // تصنيف الأسئلة حسب النقاط
+  const questionsByPoints = questions.reduce((acc, question) => {
+    if (!acc[question.points]) {
+      acc[question.points] = [];
+    }
+    acc[question.points].push(question);
+    return acc;
+  }, {} as Record<number, Question[]>);
+  
   const handleQuestionClick = (question: Question) => {
     setSelectedQuestion(question);
     setShowAnswer(false);
   };
-
-  // Group questions by points
-  const questionsByPoints = questions.reduce(
-    (acc, question) => {
-      const pointsKey = question.points;
-      if (!acc[pointsKey]) {
-        acc[pointsKey] = [];
-      }
-      acc[pointsKey].push(question);
-      return acc;
-    },
-    {} as Record<number, Question[]>
-  );
-
+  
   const handleMarkUsed = async () => {
     if (!selectedQuestion || !selectedTeam) return;
-
+    
     try {
       await axios.post(`/api/questions/${selectedQuestion.id}/used`);
-      // Assuming refetch is handled externally now.
+      // حساب النقاط الجديدة للفريق
       const newScore = selectedTeam + selectedQuestion.points;
       await onTeamScoreUpdate(selectedTeam, newScore);
       setSelectedQuestion(null);
@@ -74,32 +69,30 @@ export default function TopicCard({
   return (
     <Card className="w-full">
       <CardHeader className="p-3">
-        <CardTitle className="text-center">{topic.title}</CardTitle>
+        <CardTitle className="text-center">{topic.name}</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-3 gap-2 p-3">
         {[200, 400, 600].map((points) => {
           const questionsForPoints = questionsByPoints[points] || [];
           const unusedQuestions = questionsForPoints.filter(q => !q.used);
-
+          
           return (
             <div key={points} className="my-2">
               {unusedQuestions.length > 0 ? (
                 <Button
-                  className="w-full py-8"
+                  className="w-full py-6"
+                  variant={selectedTeam ? "default" : "outline"}
+                  disabled={!selectedTeam}
                   onClick={() => {
                     if (unusedQuestions.length > 0) {
                       handleQuestionClick(unusedQuestions[0]);
                     }
                   }}
-                  disabled={!selectedTeam}
                 >
                   {points}
                 </Button>
               ) : (
-                <Button
-                  className="w-full py-8 bg-gray-300 text-gray-500"
-                  disabled
-                >
+                <Button className="w-full py-6" variant="outline" disabled={true}>
                   {points}
                 </Button>
               )}

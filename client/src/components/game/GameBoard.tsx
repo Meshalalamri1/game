@@ -1,6 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+
+import React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import TopicCard from "./TopicCard";
-import type { Team, Topic } from "@shared/schema";
+import type { Team, Topic, Question } from "@shared/schema";
+import axios from "axios";
 
 interface GameBoardProps {
   selectedTeam: Team | null;
@@ -9,17 +12,45 @@ interface GameBoardProps {
 }
 
 export default function GameBoard({ selectedTeam, onTeamSelect, teams }: GameBoardProps) {
-  const { data: topics = [], isLoading } = useQuery<Topic[]>({
-    queryKey: ["/api/topics"]
+  const queryClient = useQueryClient();
+  
+  const { data: topics = [], isLoading: topicsLoading } = useQuery<Topic[]>({
+    queryKey: ["/api/topics"],
+    queryFn: async () => {
+      const response = await axios.get("/api/topics");
+      return response.data;
+    }
   });
 
-  if (isLoading) {
-    return <div>Loading...</div>;
+  // جلب الأسئلة لكل موضوع
+  const topicsWithQuestions = useQuery({
+    queryKey: ["topicsWithQuestions"],
+    queryFn: async () => {
+      const topicsWithQuestionsData = await Promise.all(
+        topics.map(async (topic) => {
+          const response = await axios.get(`/api/topics/${topic.id}/questions`);
+          return {
+            ...topic,
+            questions: response.data
+          };
+        })
+      );
+      return topicsWithQuestionsData;
+    },
+    enabled: topics.length > 0,
+  });
+
+  if (topicsLoading || topicsWithQuestions.isLoading) {
+    return <div className="text-center p-10">جارٍ التحميل...</div>;
+  }
+
+  if (topicsWithQuestions.isError) {
+    return <div className="text-center p-10 text-red-500">حدث خطأ في تحميل البيانات</div>;
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {topics.map((topic: Topic) => (
+      {topicsWithQuestions.data?.map((topic) => (
         <TopicCard
           key={topic.id}
           topic={topic}
@@ -29,19 +60,15 @@ export default function GameBoard({ selectedTeam, onTeamSelect, teams }: GameBoa
             console.log("Question clicked:", question);
           }}
           onTeamScoreUpdate={async (teamId, newScore) => {
-            const team = teams.find(t => t.id === teamId);
-            if (team) {
-              // تحديث النتيجة
-              console.log(`Updating team ${teamId} score to ${newScore}`);
-              return fetch(`/api/teams/${teamId}`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ score: newScore })
-              });
+            try {
+              await axios.put(`/api/teams/${teamId}`, { score: newScore });
+              queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+              queryClient.invalidateQueries({ queryKey: ["topicsWithQuestions"] });
+              return Promise.resolve();
+            } catch (error) {
+              console.error("Error updating team score:", error);
+              return Promise.reject(error);
             }
-            return Promise.resolve();
           }}
         />
       ))}
