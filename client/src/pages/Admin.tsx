@@ -401,23 +401,42 @@ export default function Admin() {
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    {questions.length > 0 ? questions.map((question: Question) => (
-                      <div key={question.id} className="flex justify-between items-center border-b pb-2 mb-2">
-                        <div>
-                          <div className="font-semibold">{question.question}</div>
-                          <div className="text-sm text-gray-500">النقاط: {question.points} | الإجابة: {question.answer}</div>
-                          <div className="text-xs text-gray-500">الحالة: {question.used ? "تم استخدامه" : "متاح"}</div>
+                    {questions.length > 0 ? (
+                      questions.map((question: Question) => (
+                        <div key={question.id} className="flex justify-between items-center border-b pb-2 mb-2">
+                          <div>
+                            <div className="font-semibold">{question.question}</div>
+                            <div className="text-sm text-gray-500">النقاط: {question.points} | الإجابة: {question.answer}</div>
+                            <div className="text-xs text-gray-500">الحالة: {question.used ? "تم استخدامه" : "متاح"}</div>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await apiRequest("DELETE", `/api/questions/${question.id}`, undefined);
+                                queryClient.invalidateQueries({
+                                  queryKey: [`/api/topics/${selectedTopicId}/questions`]
+                                });
+                                toast({
+                                  title: "تم حذف السؤال بنجاح",
+                                  variant: "default",
+                                });
+                              } catch (error) {
+                                console.error("Error deleting question:", error);
+                                toast({
+                                  title: "خطأ في حذف السؤال",
+                                  description: (error as Error).message,
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            حذف
+                          </Button>
                         </div>
-                        <Button
-                          variant="destructive"
-                          onClick={() => deleteQuestion.mutate(question.id)}
-                          disabled={deleteQuestion.isPending}
-                          size="sm"
-                        >
-                          حذف
-                        </Button>
-                      </div>
-                    ))) : (
+                      ))
+                    ) : (
                       <div className="text-center py-4 text-gray-500">
                         لا توجد أسئلة لهذا الموضوع. قم بإضافة أسئلة جديدة.
                       </div>

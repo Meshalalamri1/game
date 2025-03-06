@@ -72,7 +72,7 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
     if (selectedTeam) {
       queryClient.invalidateQueries({ queryKey: [`/api/topics/${topic.id}/questions`] });
     }
-  }, [selectedTeam, topic.id]);
+  }, [selectedTeam, topic.id, queryClient]);
 
   const handleQuestionClick = (question: Question) => {
     if (!selectedTeam) return;
