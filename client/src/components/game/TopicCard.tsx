@@ -88,20 +88,29 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
         <CardContent className="grid grid-cols-3 gap-2">
           {[200, 400, 600].map((points) => {
             const availableQuestions = questionsByPoints[points as keyof typeof questionsByPoints];
-            // تحسين لعرض سؤالين لكل فئة نقاط
+            // تحسين لعرض كل الأسئلة المتاحة لكل فئة نقاط
             return (
               <div key={points} className="flex flex-col gap-2">
-                {[0, 1].map((index) => (
+                {availableQuestions.map((question, index) => (
                   <Button
                     key={`${points}-${index}`}
                     className="h-16"
                     variant={selectedTeam ? "default" : "outline"}
-                    disabled={!selectedTeam || index >= availableQuestions.length}
-                    onClick={() => availableQuestions[index] && handleQuestionClick(availableQuestions[index])}
+                    disabled={!selectedTeam}
+                    onClick={() => handleQuestionClick(question)}
                   >
                     {points}
                   </Button>
                 ))}
+                {availableQuestions.length === 0 && (
+                  <Button
+                    className="h-16"
+                    variant="outline"
+                    disabled={true}
+                  >
+                    {points}
+                  </Button>
+                )}
               </div>
             );
           })}

@@ -192,20 +192,7 @@ export default function Admin() {
 
   // تقديم النموذج لإضافة سؤال جديد
   const onSubmitQuestion = (data) => {
-    // التحقق من عدد الأسئلة لنفس الموضوع ونفس فئة النقاط
-    const questionsInSamePointCategory = questions.filter(
-      q => q.topicId === data.topicId && q.points === data.points
-    );
-
-    if (questionsInSamePointCategory.length >= 2) {
-      toast({
-        title: "خطأ",
-        description: `يوجد بالفعل سؤالين لفئة ${data.points} نقطة لهذا الموضوع`,
-        variant: "destructive"
-      });
-      return;
-    }
-
+    // تم إزالة التحقق من عدد الأسئلة لنفس فئة النقاط للسماح بإضافة أكثر من سؤالين
     addQuestion.mutate(data);
     addQuestionForm.reset();
   };
