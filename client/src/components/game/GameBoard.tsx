@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +11,10 @@ export default function GameBoard() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const navigate = useNavigate();
+  // توفير سياق بديل للتنقل بدون استخدام useNavigate
+  const handleNavigate = (path: string) => {
+    window.location.href = path;
+  };
 
   useEffect(() => {
     fetchGameData();
@@ -62,7 +64,7 @@ export default function GameBoard() {
         <h1 className="text-3xl font-bold">لعبة المسابقة</h1>
         <Button
           variant="outline"
-          onClick={() => navigate("/admin")}
+          onClick={() => handleNavigate("/admin")}
           className="ml-2"
         >
           لوحة الإدارة
