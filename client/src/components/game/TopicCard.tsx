@@ -49,16 +49,10 @@ export default function TopicCard({ topic, selectedTeam, onTeamSelect, teams }: 
   };
 
   const handleQuestionClick = (question: Question) => {
-    setSelectedQuestion(question);
-    // عند اختيار سؤال، قم بتعليمه كمستخدم
-    if (selectedTeam) {
-      markQuestionUsedMutation.mutate(question.id);
-    }
-  };
-
-  const handleQuestionClick = (question: Question) => {
     if (!selectedTeam) return;
     setSelectedQuestion(question);
+    // عند اختيار سؤال، قم بتعليمه كمستخدم
+    markQuestionUsedMutation.mutate(question.id);
   };
 
   const handleQuestionAnswer = async (correct: boolean) => {
