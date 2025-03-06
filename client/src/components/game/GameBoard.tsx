@@ -1,77 +1,94 @@
 
-import React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import TopicCard from "./TopicCard";
-import type { Team, Topic, Question } from "@shared/schema";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import TopicCard from "./TopicCard";
+import TeamsScoreboard from "./TeamsScoreboard";
 
-interface GameBoardProps {
-  selectedTeam: Team | null;
-  onTeamSelect: (team: Team | null) => void;
-  teams: Team[];
-}
+export default function GameBoard() {
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const navigate = useNavigate();
 
-export default function GameBoard({ selectedTeam, onTeamSelect, teams }: GameBoardProps) {
-  const queryClient = useQueryClient();
-  
-  const { data: topics = [], isLoading: topicsLoading } = useQuery<Topic[]>({
-    queryKey: ["/api/topics"],
-    queryFn: async () => {
-      const response = await axios.get("/api/topics");
-      return response.data;
+  useEffect(() => {
+    fetchGameData();
+  }, []);
+
+  const fetchGameData = async () => {
+    try {
+      const [topicsRes, questionsRes, teamsRes] = await Promise.all([
+        axios.get("/api/topics"),
+        axios.get("/api/questions"),
+        axios.get("/api/teams"),
+      ]);
+
+      setTopics(topicsRes.data);
+      setQuestions(questionsRes.data);
+      setTeams(teamsRes.data);
+    } catch (error) {
+      console.error("Error fetching game data:", error);
     }
-  });
+  };
 
-  // جلب الأسئلة لكل موضوع
-  const topicsWithQuestions = useQuery({
-    queryKey: ["topicsWithQuestions"],
-    queryFn: async () => {
-      const topicsWithQuestionsData = await Promise.all(
-        topics.map(async (topic) => {
-          const response = await axios.get(`/api/topics/${topic.id}/questions`);
-          return {
-            ...topic,
-            questions: response.data
-          };
-        })
+  const handleQuestionClick = (question: Question) => {
+    setCurrentQuestion(question);
+  };
+
+  const handleTeamSelect = (teamId: number) => {
+    setSelectedTeam(teamId === selectedTeam ? null : teamId);
+  };
+
+  const handleTeamScoreUpdate = async (teamId: number, newScore: number) => {
+    try {
+      await axios.patch(`/api/teams/${teamId}`, { score: newScore });
+      setTeams(
+        teams.map((team) =>
+          team.id === teamId ? { ...team, score: newScore } : team
+        )
       );
-      return topicsWithQuestionsData;
-    },
-    enabled: topics.length > 0,
-  });
-
-  if (topicsLoading || topicsWithQuestions.isLoading) {
-    return <div className="text-center p-10">جارٍ التحميل...</div>;
-  }
-
-  if (topicsWithQuestions.isError) {
-    return <div className="text-center p-10 text-red-500">حدث خطأ في تحميل البيانات</div>;
-  }
+    } catch (error) {
+      console.error("Error updating team score:", error);
+      throw error;
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {topicsWithQuestions.data?.map((topic) => (
-        <TopicCard
-          key={topic.id}
-          topic={topic}
-          questions={topic.questions || []}
-          selectedTeam={selectedTeam ? selectedTeam.id : null}
-          onQuestionClick={(question) => {
-            console.log("Question clicked:", question);
-          }}
-          onTeamScoreUpdate={async (teamId, newScore) => {
-            try {
-              await axios.put(`/api/teams/${teamId}`, { score: newScore });
-              queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-              queryClient.invalidateQueries({ queryKey: ["topicsWithQuestions"] });
-              return Promise.resolve();
-            } catch (error) {
-              console.error("Error updating team score:", error);
-              return Promise.reject(error);
-            }
-          }}
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">لعبة المسابقة</h1>
+        <Button
+          variant="outline"
+          onClick={() => navigate("/admin")}
+          className="ml-2"
+        >
+          لوحة الإدارة
+        </Button>
+      </div>
+
+      <div className="mb-6">
+        <TeamsScoreboard
+          teams={teams}
+          selectedTeam={selectedTeam}
+          onTeamSelect={handleTeamSelect}
         />
-      ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {topics.map((topic) => (
+          <TopicCard
+            key={topic.id}
+            topic={topic}
+            questions={questions}
+            selectedTeam={selectedTeam}
+            onQuestionClick={handleQuestionClick}
+            onTeamScoreUpdate={handleTeamScoreUpdate}
+          />
+        ))}
+      </div>
     </div>
   );
 }
